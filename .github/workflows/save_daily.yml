@@ -2,8 +2,8 @@ name: 주도테마 일일 저장
 
 on:
   schedule:
-    - cron: '40 6 * * 1-5'  # 한국시간 15:40 (UTC+9 = UTC 06:40), 평일만
-  workflow_dispatch:  # 수동 실행 버튼도 활성화
+    - cron: '40 6 * * 1-5'
+  workflow_dispatch:
 
 jobs:
   save_theme:
