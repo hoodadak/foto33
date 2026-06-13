@@ -1,8 +1,18 @@
 import streamlit as st
 import urllib.parse
 import requests
-from datetime import datetime
+import json
+import os
+from datetime import datetime, date, timedelta
 from bs4 import BeautifulSoup
+
+# gspread는 선택적 임포트 (없어도 실시간 기능은 동작)
+try:
+    import gspread
+    from google.oauth2.service_account import Credentials
+    GSPREAD_AVAILABLE = True
+except ImportError:
+    GSPREAD_AVAILABLE = False
 
 # ===================== 기본 설정 =====================
 st.set_page_config(page_title="주도테마", layout="wide")
@@ -14,9 +24,78 @@ current_date_str = f"{now.strftime('%m-%d')}({weekday_list[now.weekday()]}) {now
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 
 CACHE_TTL = 180  # 3분
-TOP_THEME_COUNT = 10       # 최종 노출 테마 수
-THEME_SCAN_COUNT = 25       # theme.naver에서 스캔할 상위 테마 수
-STOCKS_PER_THEME = 5         # 테마별 노출 종목 수 (상승종목 거래대금 합 계산에도 동일하게 사용)
+TOP_THEME_COUNT = 10
+THEME_SCAN_COUNT = 25
+STOCKS_PER_THEME = 5
+
+# ===================== Google Sheets 과거 데이터 조회 =====================
+@st.cache_data(ttl=3600)
+def load_history_from_sheet(date_str):
+    """Google Sheets에서 특정 날짜 데이터 불러오기"""
+    if not GSPREAD_AVAILABLE:
+        return None
+    try:
+        creds_json = os.environ.get("GOOGLE_CREDENTIALS", "")
+        sheet_id = os.environ.get("SHEET_ID", "")
+        if not creds_json or not sheet_id:
+            return None
+        creds_dict = json.loads(creds_json)
+        scopes = [
+            "https://spreadsheets.google.com/feeds",
+            "https://www.googleapis.com/auth/drive"
+        ]
+        creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+        gc = gspread.authorize(creds)
+        wb = gc.open_by_key(sheet_id)
+        try:
+            ws = wb.worksheet(date_str)
+        except gspread.exceptions.WorksheetNotFound:
+            return None
+        rows = ws.get_all_values()
+        if len(rows) < 2:
+            return None
+        # 헤더 제외하고 테마 데이터 파싱
+        themes = []
+        for row in rows[1:]:
+            if not row or not row[0]:
+                continue
+            stocks = []
+            for i in range(3, min(18, len(row)), 3):
+                name = row[i] if i < len(row) else ""
+                rate = row[i+1] if i+1 < len(row) else ""
+                vol = row[i+2] if i+2 < len(row) else ""
+                if name:
+                    try:
+                        rate_num = float(rate.replace("%", "").replace("+", ""))
+                    except ValueError:
+                        rate_num = 0.0
+                    stocks.append({
+                        "name": name,
+                        "rate_num": rate_num,
+                        "amount_eok": float(vol.replace(",", "")) if vol else 0.0,
+                        "price": 0,
+                        "is_limit_up": rate_num >= 29.5,
+                        "is_52w_high": False,
+                        "limit_up_time": None
+                    })
+            try:
+                total_sum = float(row[2].replace(",", "")) if row[2] else 0.0
+            except ValueError:
+                total_sum = 0.0
+            themes.append({
+                "name": row[1] if len(row) > 1 else "",
+                "code": "",
+                "total_sum": total_sum,
+                "rising_sum": total_sum,
+                "has_limit_up": any(s["is_limit_up"] for s in stocks),
+                "has_52w_high": False,
+                "is_top_amount": len(themes) == 0,
+                "stocks": stocks
+            })
+        return themes
+    except Exception as e:
+        st.error(f"과거 데이터 불러오기 실패: {e}")
+        return None
 
 # 한국 증시 공휴일(휴장일) 목록 - 필요시 연도별로 추가/수정
 KR_MARKET_HOLIDAYS = {
@@ -500,15 +579,15 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# ===================== 자동 새로고침 (장 운영시간: 평일 08:00~18:00, 공휴일 제외) =====================
-if is_market_open_now(now):
+# ===================== 자동 새로고침 (장 운영시간: 평일 08:00~18:00, 공휴일 제외, 오늘만) =====================
+if is_market_open_now(now) and 'selected_date' not in st.session_state:
     st.markdown(
         f"<meta http-equiv='refresh' content='{CACHE_TTL}'>",
         unsafe_allow_html=True
     )
 
-# ===================== 상단 헤더 + 새로고침 버튼 =====================
-header_col1, header_col2 = st.columns([5, 1])
+# ===================== 상단 헤더 + 날짜 선택 + 새로고침 버튼 =====================
+header_col1, header_col2, header_col3 = st.columns([4, 2, 1])
 with header_col1:
     st.markdown(f"""
         <div class="tima-header-box">
@@ -517,13 +596,33 @@ with header_col1:
         </div>
         """, unsafe_allow_html=True)
 with header_col2:
+    selected_date = st.date_input(
+        "날짜 선택",
+        value=date.today(),
+        min_value=date(2026, 1, 1),
+        max_value=date.today(),
+        label_visibility="collapsed"
+    )
+with header_col3:
     if st.button("🔄 새로고침", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
 
-# ===================== 테마 랭킹 계산 =====================
-with st.spinner("실시간 테마 데이터를 불러오는 중..."):
-    theme_ranking = build_theme_ranking()
+is_today = (selected_date == date.today())
+selected_date_str = selected_date.strftime("%Y-%m-%d")
+
+# ===================== 데이터 로드 (오늘=실시간, 과거=Google Sheets) =====================
+if is_today:
+    if is_market_open_now(now):
+        pass  # 자동 새로고침 이미 위에서 처리
+    with st.spinner("실시간 테마 데이터를 불러오는 중..."):
+        theme_ranking = build_theme_ranking()
+else:
+    with st.spinner(f"{selected_date_str} 데이터를 불러오는 중..."):
+        theme_ranking = load_history_from_sheet(selected_date_str)
+    if theme_ranking is None:
+        st.warning(f"{selected_date_str} 저장된 데이터가 없습니다. 장이 열린 날짜를 선택해주세요.")
+        st.stop()
 
 if not theme_ranking:
     st.warning("테마 데이터를 불러오지 못했습니다. 잠시 후 새로고침 해주세요.")
