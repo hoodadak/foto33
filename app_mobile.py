@@ -424,7 +424,8 @@ st.markdown('<div style="font-size:22px;font-weight:800;color:#1e293b;padding:4p
 # 날짜 + 새로고침 오른쪽 정렬
 st.markdown('<div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:4px;">', unsafe_allow_html=True)
 # 날짜 + 새로고침 오른쪽 정렬 (화면 안)
-col_empty, col_d, col_r = st.columns([4, 1, 1])
+# 날짜 + 새로고침 왼쪽 정렬
+col_d, col_r, col_empty = st.columns([1, 1, 4])
 with col_d:
     selected_date = st.date_input("날짜", value=date.today(),
                                    min_value=date(2026, 1, 1), max_value=date.today(),
@@ -433,7 +434,6 @@ with col_r:
     if st.button("🔄", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
-st.markdown('</div>', unsafe_allow_html=True)
 
 # ===================== 데이터 로드 =====================
 is_today = (selected_date == date.today())
