@@ -373,7 +373,7 @@ div[data-testid="column"] { min-width: 0 !important; flex: 1 !important; padding
     color: #000000 !important; text-decoration: none !important; }
 .rate-up { color: #dc2626; font-weight: 700; font-size: 12px; }
 .rate-down { color: #2563eb; font-weight: 700; font-size: 12px; }
-.stock-price-m { font-size: 11px; color: #334155; }
+.stock-price-m { font-size: 11px; color: #000000; font-weight: 600; }
 .stock-vol-m { font-size: 11px; font-weight: 600; color: #334155; }
 
 .badge-52w-m { background-color: #16a34a; color: #fff; font-size: 8px; font-weight: 700;
@@ -399,44 +399,22 @@ div[data-testid="column"] { min-width: 0 !important; flex: 1 !important; padding
 if is_market_open_now(now):
     st.markdown(f"<meta http-equiv='refresh' content='{CACHE_TTL}'>", unsafe_allow_html=True)
 
-# ===================== 헤더 =====================
-st.markdown("""
-    <div class="header-box">
-        <span class="logo-main">주도테마</span>
-        <span id="mob-clock" class="date-text"></span>
-    </div>
-""", unsafe_allow_html=True)
-components.html("""
-    <script>
-    function tick() {
-        const w = ['일','월','화','수','목','금','토'];
-        const n = new Date();
-        const mm = String(n.getMonth()+1).padStart(2,'0');
-        const dd = String(n.getDate()).padStart(2,'0');
-        const wd = w[n.getDay()];
-        const hh = String(n.getHours()).padStart(2,'0');
-        const mi = String(n.getMinutes()).padStart(2,'0');
-        const ss = String(n.getSeconds()).padStart(2,'0');
-        const el = window.parent.document.getElementById('mob-clock');
-        if(el) el.innerText = mm+'-'+dd+'('+wd+') '+hh+':'+mi+':'+ss;
-    }
-    tick(); setInterval(tick, 1000);
-    </script>
-""", height=0)
-
-# 날짜 선택 + 새로고침 (강제 가로배치)
+# ===================== 헤더 + 날짜 + 새로고침 한 줄 =====================
 st.markdown("""
 <style>
 div[data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; }
 div[data-testid="column"] { min-width: 0 !important; }
 </style>
 """, unsafe_allow_html=True)
-c1, c2 = st.columns([3, 1])
-with c1:
+
+h1, h2, h3 = st.columns([2, 3, 1])
+with h1:
+    st.markdown('<div style="font-size:22px;font-weight:800;color:#1e293b;padding-top:6px;">주도테마</div>', unsafe_allow_html=True)
+with h2:
     selected_date = st.date_input("날짜", value=date.today(),
                                    min_value=date(2026, 1, 1), max_value=date.today(),
                                    label_visibility="collapsed")
-with c2:
+with h3:
     if st.button("🔄", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
@@ -493,8 +471,10 @@ def make_card_html(theme):
         stocks_html += (
             f'<div class="{box_class}">'
             f'<div class="stock-row1-m">'
+            f'<span style="display:flex;align-items:center;gap:3px;min-width:0;overflow:hidden;">'
             f'<a href="{news_url}" target="_blank" class="stock-name-m">{s["name"]}</a>{badge_52w}'
-            f'<span class="{rate_class}">{rate_str}</span>'
+            f'</span>'
+            f'<span class="{rate_class}" style="white-space:nowrap;margin-left:4px;">{rate_str}</span>'
             f'</div>'
             f'<div class="stock-row2-m">'
             f'<span class="stock-price-m">{price_str}</span>'
