@@ -530,6 +530,18 @@ st.markdown("""
     .logo-sub { font-size: 16px; font-weight: 600; color: #94a3b8; margin-left: 8px; }
     .date-text { font-size: 25px; color: #000000; font-weight: 500; }
 
+    /* Streamlit 컬럼이 모바일에서 세로로 쌓이지 않도록 강제 가로배치 */
+    @media (max-width: 768px) {
+        [data-testid="stHorizontalBlock"] {
+            flex-wrap: nowrap !important;
+            overflow-x: auto;
+        }
+        [data-testid="column"] {
+            min-width: 0 !important;
+            width: auto !important;
+        }
+    }
+
     .tima-search-bar {
         background-color: white; border: 1px solid #e2e8f0; border-radius: 10px;
         padding: 10px 16px; color: #94a3b8; font-size: 14px; margin-bottom: 22px;
@@ -638,26 +650,35 @@ with header_col4:
         st.cache_data.clear()
         st.rerun()
 
-# 모바일 모드일 때만 2행에 컨트롤 추가 표시
+# 모바일 모드일 때만 2행에 컨트롤 추가 표시 (HTML로 가로 강제 배치)
 if st.session_state.view_mode == "모바일":
-    mob_ctrl1, mob_ctrl2, mob_ctrl3 = st.columns([3, 1, 1])
-    with mob_ctrl1:
-        selected_date = st.date_input(
-            "날짜 선택(모바일)",
+    mob_col1, mob_col2, mob_col3 = st.columns([3, 1, 1])
+    with mob_col1:
+        mob_date = st.date_input(
+            "날짜",
             value=date.today(),
             min_value=date(2026, 1, 1),
             max_value=date.today(),
             label_visibility="collapsed",
             key="mob_date"
         )
-    with mob_ctrl2:
+        selected_date = mob_date
+    with mob_col2:
         if st.button("🖥️ PC", use_container_width=True, key="mob_pc_btn"):
             st.session_state.view_mode = "PC"
             st.rerun()
-    with mob_ctrl3:
+    with mob_col3:
         if st.button("🔄", use_container_width=True, key="mob_refresh"):
             st.cache_data.clear()
             st.rerun()
+    # 컬럼 강제 가로배치 CSS (모바일 전용)
+    st.markdown("""
+        <style>
+        section[data-testid="stSidebar"] { display: none; }
+        div[data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; }
+        div[data-testid="column"] { min-width: 0 !important; }
+        </style>
+    """, unsafe_allow_html=True)
 
 # 모바일 모드에선 mob_date 값을 사용
 if st.session_state.view_mode == "모바일" and "mob_date" in st.session_state:
