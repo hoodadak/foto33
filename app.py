@@ -591,33 +591,35 @@ if is_market_open_now(now) and 'selected_date' not in st.session_state:
     )
 
 # ===================== 상단 헤더 + 날짜 선택 + 새로고침 버튼 =====================
-header_col1, header_col2, header_col3, header_col4 = st.columns([5, 1, 0.5, 0.5])
-with header_col1:
-    st.markdown("""
-        <div class="tima-header-box">
-            <div><span class="logo-main">주도테마</span></div>
-            <div id="live-clock" class="date-text"></div>
-        </div>
-        """, unsafe_allow_html=True)
-    components.html("""
-        <script>
-        function updateClock() {
-            const weekdays = ['일','월','화','수','목','금','토'];
-            const now = new Date();
-            const mm = String(now.getMonth()+1).padStart(2,'0');
-            const dd = String(now.getDate()).padStart(2,'0');
-            const wd = weekdays[now.getDay()];
-            const hh = String(now.getHours()).padStart(2,'0');
-            const mi = String(now.getMinutes()).padStart(2,'0');
-            const ss = String(now.getSeconds()).padStart(2,'0');
-            const el = window.parent.document.getElementById('live-clock');
-            if (el) el.innerText = mm+'-'+dd+'('+wd+') '+hh+':'+mi+':'+ss;
-        }
-        updateClock();
-        setInterval(updateClock, 1000);
-        </script>
-    """, height=0)
-with header_col2:
+# 1행: 로고 + 시계
+st.markdown("""
+    <div class="tima-header-box">
+        <div><span class="logo-main">주도테마</span></div>
+        <div id="live-clock" class="date-text"></div>
+    </div>
+    """, unsafe_allow_html=True)
+components.html("""
+    <script>
+    function updateClock() {
+        const weekdays = ['일','월','화','수','목','금','토'];
+        const now = new Date();
+        const mm = String(now.getMonth()+1).padStart(2,'0');
+        const dd = String(now.getDate()).padStart(2,'0');
+        const wd = weekdays[now.getDay()];
+        const hh = String(now.getHours()).padStart(2,'0');
+        const mi = String(now.getMinutes()).padStart(2,'0');
+        const ss = String(now.getSeconds()).padStart(2,'0');
+        const el = window.parent.document.getElementById('live-clock');
+        if (el) el.innerText = mm+'-'+dd+'('+wd+') '+hh+':'+mi+':'+ss;
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+    </script>
+""", height=0)
+
+# 2행: 날짜선택 + 전환버튼 + 새로고침 한 줄
+ctrl_col1, ctrl_col2, ctrl_col3 = st.columns([3, 1, 1])
+with ctrl_col1:
     selected_date = st.date_input(
         "날짜 선택",
         value=date.today(),
@@ -625,13 +627,13 @@ with header_col2:
         max_value=date.today(),
         label_visibility="collapsed"
     )
-with header_col3:
+with ctrl_col2:
     if "view_mode" not in st.session_state:
         st.session_state.view_mode = "PC"
-    if st.button("📱 모바일" if st.session_state.view_mode == "PC" else "🖥️ PC", use_container_width=True):
+    if st.button("📱 2열" if st.session_state.view_mode == "PC" else "🖥️ 5열", use_container_width=True):
         st.session_state.view_mode = "모바일" if st.session_state.view_mode == "PC" else "PC"
         st.rerun()
-with header_col4:
+with ctrl_col3:
     if st.button("🔄 새로고침", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
