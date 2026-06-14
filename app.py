@@ -606,14 +606,58 @@ if is_market_open_now(now) and 'selected_date' not in st.session_state:
 if "view_mode" not in st.session_state:
     st.session_state.view_mode = "PC"
 
-# PC: 로고+시계+버튼 한 줄 / 모바일: 이 줄 숨기고 모바일 컨트롤만 표시
-st.markdown('<div id="pc-header-bar">', unsafe_allow_html=True)
-header_col1, header_col2, header_col3, header_col4 = st.columns([5, 1, 0.5, 0.5])
-with header_col1:
+is_mobile = (st.session_state.view_mode == "모바일")
+
+if not is_mobile:
+    # ── PC 모드: 로고+시계+날짜+버튼 한 줄 ──
+    header_col1, header_col2, header_col3, header_col4 = st.columns([5, 1, 0.5, 0.5])
+    with header_col1:
+        st.markdown("""
+            <div class="tima-header-box">
+                <div><span class="logo-main">주도테마</span></div>
+                <div id="live-clock" class="date-text"></div>
+            </div>
+            """, unsafe_allow_html=True)
+        components.html("""
+            <script>
+            function updateClock() {
+                const weekdays = ['일','월','화','수','목','금','토'];
+                const now = new Date();
+                const mm = String(now.getMonth()+1).padStart(2,'0');
+                const dd = String(now.getDate()).padStart(2,'0');
+                const wd = weekdays[now.getDay()];
+                const hh = String(now.getHours()).padStart(2,'0');
+                const mi = String(now.getMinutes()).padStart(2,'0');
+                const ss = String(now.getSeconds()).padStart(2,'0');
+                const el = window.parent.document.getElementById('live-clock');
+                if (el) el.innerText = mm+'-'+dd+'('+wd+') '+hh+':'+mi+':'+ss;
+            }
+            updateClock();
+            setInterval(updateClock, 1000);
+            </script>
+        """, height=0)
+    with header_col2:
+        selected_date = st.date_input(
+            "날짜 선택",
+            value=date.today(),
+            min_value=date(2026, 1, 1),
+            max_value=date.today(),
+            label_visibility="collapsed"
+        )
+    with header_col3:
+        if st.button("📱 모바일", use_container_width=True):
+            st.session_state.view_mode = "모바일"
+            st.rerun()
+    with header_col4:
+        if st.button("🔄 새로고침", use_container_width=True):
+            st.cache_data.clear()
+            st.rerun()
+else:
+    # ── 모바일 모드: 로고+시계 1행 / 날짜+버튼 2행 ──
     st.markdown("""
         <div class="tima-header-box">
             <div><span class="logo-main">주도테마</span></div>
-            <div id="live-clock" class="date-text"></div>
+            <div id="live-clock" class="date-text" style="font-size:16px;"></div>
         </div>
         """, unsafe_allow_html=True)
     components.html("""
@@ -634,29 +678,10 @@ with header_col1:
         setInterval(updateClock, 1000);
         </script>
     """, height=0)
-with header_col2:
-    selected_date = st.date_input(
-        "날짜 선택",
-        value=date.today(),
-        min_value=date(2026, 1, 1),
-        max_value=date.today(),
-        label_visibility="collapsed"
-    )
-with header_col3:
-    if st.button("📱 모바일" if st.session_state.view_mode == "PC" else "🖥️ PC", use_container_width=True):
-        st.session_state.view_mode = "모바일" if st.session_state.view_mode == "PC" else "PC"
-        st.rerun()
-with header_col4:
-    if st.button("🔄 새로고침", use_container_width=True):
-        st.cache_data.clear()
-        st.rerun()
-st.markdown('</div>', unsafe_allow_html=True)
 
-# 모바일 모드일 때만 2행에 컨트롤 추가 표시 (HTML로 가로 강제 배치)
-if st.session_state.view_mode == "모바일":
     mob_col1, mob_col2, mob_col3 = st.columns([3, 1, 1])
     with mob_col1:
-        mob_date = st.date_input(
+        selected_date = st.date_input(
             "날짜",
             value=date.today(),
             min_value=date(2026, 1, 1),
@@ -664,7 +689,6 @@ if st.session_state.view_mode == "모바일":
             label_visibility="collapsed",
             key="mob_date"
         )
-        selected_date = mob_date
     with mob_col2:
         if st.button("🖥️ PC", use_container_width=True, key="mob_pc_btn"):
             st.session_state.view_mode = "PC"
@@ -673,30 +697,25 @@ if st.session_state.view_mode == "모바일":
         if st.button("🔄", use_container_width=True, key="mob_refresh"):
             st.cache_data.clear()
             st.rerun()
-    if st.session_state.view_mode == "모바일":
-        st.markdown("""
-            <style>
-            /* 모바일 모드: 헤더 PC 버튼 줄 숨기기 */
-            #pc-header-bar { display: none !important; }
-            #pc-header-bar + div { display: none !important; }
-            /* 컬럼 강제 가로배치 */
-            div[data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; }
-            div[data-testid="column"] { min-width: 0 !important; }
-            /* 모바일 카드 폰트/패딩 축소 */
-            .theme-card-container { padding: 8px !important; margin-bottom: 8px !important; }
-            .theme-card-header { font-size: 13px !important; }
-            .theme-card-money { font-size: 11px !important; }
-            .stock-item-name { font-size: 13px !important; }
-            .txt-up-red, .txt-down-blue { font-size: 12px !important; }
-            span[style*="font-size:19px"] { font-size: 12px !important; }
-            .candle-bar-track { height: 4px !important; margin-top: 4px !important; }
-            .stock-item-box { padding: 6px 8px !important; margin-bottom: 4px !important; }
-            </style>
-        """, unsafe_allow_html=True)
 
-# 모바일 모드에선 mob_date 값을 사용
-if st.session_state.view_mode == "모바일" and "mob_date" in st.session_state:
-    selected_date = st.session_state["mob_date"]
+    # 모바일 전용 CSS: 컬럼 가로배치 강제 + 카드/폰트 축소
+    st.markdown("""
+        <style>
+        div[data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; }
+        div[data-testid="column"] { min-width: 0 !important; flex: 1 !important; }
+        .theme-card-container { padding: 6px !important; margin-bottom: 6px !important; }
+        .theme-card-header { font-size: 12px !important; gap: 4px !important; }
+        .theme-card-money { font-size: 10px !important; padding: 1px 4px !important; }
+        .stock-item-box { padding: 5px 6px !important; margin-bottom: 4px !important; }
+        .stock-item-name { font-size: 12px !important; }
+        .txt-up-red, .txt-down-blue { font-size: 11px !important; }
+        .stock-item-meta span { font-size: 10px !important; }
+        .candle-bar-track { height: 3px !important; margin-top: 3px !important; }
+        </style>
+    """, unsafe_allow_html=True)
+
+    if "mob_date" in st.session_state:
+        selected_date = st.session_state["mob_date"]
 
 is_today = (selected_date == date.today())
 selected_date_str = selected_date.strftime("%Y-%m-%d")
