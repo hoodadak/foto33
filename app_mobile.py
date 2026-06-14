@@ -388,6 +388,10 @@ div[data-testid="column"] { min-width: 0 !important; flex: 1 !important; padding
           background-color: #ef4444; border-radius: 0 2px 2px 0; }
 .bar-down-m { position: absolute; right: 50%; top: 0; height: 100%;
             background-color: #3b82f6; border-radius: 2px 0 0 2px; }
+/* 2열 그리드 */
+.grid-2col { width: 100%; }
+.grid-row { display: flex; flex-direction: row; gap: 4px; margin-bottom: 0; }
+.grid-cell { flex: 1; min-width: 0; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -420,14 +424,20 @@ components.html("""
     </script>
 """, height=0)
 
-# 날짜 선택 + 새로고침
+# 날짜 선택 + 새로고침 (강제 가로배치)
+st.markdown("""
+<style>
+div[data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; }
+div[data-testid="column"] { min-width: 0 !important; }
+</style>
+""", unsafe_allow_html=True)
 c1, c2 = st.columns([3, 1])
 with c1:
     selected_date = st.date_input("날짜", value=date.today(),
                                    min_value=date(2026, 1, 1), max_value=date.today(),
                                    label_visibility="collapsed")
 with c2:
-    if st.button("🔄 새로고침", use_container_width=True):
+    if st.button("🔄", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
 
@@ -449,8 +459,8 @@ if not theme_ranking:
     st.warning("데이터를 불러오지 못했습니다.")
     st.stop()
 
-# ===================== 테마 카드 렌더링 (2열) =====================
-def render_mobile_card(theme):
+# ===================== 테마 카드 HTML 생성 함수 =====================
+def make_card_html(theme):
     icons = ""
     if theme.get("is_top_amount"):
         icons += '<span style="filter:hue-rotate(140deg) saturate(3);">👍</span>'
@@ -460,15 +470,7 @@ def render_mobile_card(theme):
         icons += '<span style="color:#dc2626;font-weight:900;">⬆</span>'
 
     total_sum_str = f"KRX {theme['total_sum']:,.0f}억"
-
-    st.markdown(
-        f'<div class="theme-card-m">'
-        f'<div class="theme-title-row-m">'
-        f'<span>{theme["name"]} {icons}</span>'
-        f'<span class="theme-money-m">{total_sum_str}</span>'
-        f'</div>',
-        unsafe_allow_html=True
-    )
+    stocks_html = ""
 
     for s in theme["stocks"]:
         rate_num = s["rate_num"]
@@ -485,36 +487,48 @@ def render_mobile_card(theme):
         badge_52w = '<span class="badge-52w-m">52주신고가</span>' if s.get("is_52w_high") else ""
         encoded = urllib.parse.quote(s["name"])
         news_url = f"https://search.naver.com/search.naver?where=news&query={encoded}"
-        vol_str = f"{s['amount_eok']:,.0f}억(KRX)"
+        vol_str = f"{s['amount_eok']:,.0f}억"
+        price_str = f"{s['price']:,}" if s.get('price') else ""
 
-        st.markdown(
+        stocks_html += (
             f'<div class="{box_class}">'
             f'<div class="stock-row1-m">'
             f'<a href="{news_url}" target="_blank" class="stock-name-m">{s["name"]}</a>{badge_52w}'
             f'<span class="{rate_class}">{rate_str}</span>'
             f'</div>'
             f'<div class="stock-row2-m">'
-            f'<span class="stock-price-m">{s["price"]:,}</span>'
+            f'<span class="stock-price-m">{price_str}</span>'
             f'<span class="stock-vol-m">{vol_str}</span>'
             f'</div>'
             f'<div class="bar-track-m">'
             f'<div class="bar-center-m"></div>'
             f'<div class="{bar_dir}-m" style="width:{width_pct:.0f}%;"></div>'
             f'</div>'
-            f'</div>',
-            unsafe_allow_html=True
+            f'</div>'
         )
 
-    st.markdown('</div>', unsafe_allow_html=True)
+    return (
+        f'<div class="theme-card-m">'
+        f'<div class="theme-title-row-m">'
+        f'<span>{theme["name"]} {icons}</span>'
+        f'<span class="theme-money-m">{total_sum_str}</span>'
+        f'</div>'
+        f'{stocks_html}'
+        f'</div>'
+    )
 
 
-# 2열 배치: 홀수 인덱스는 왼쪽, 짝수 인덱스는 오른쪽
+# ===================== 전체 그리드 HTML로 렌더링 =====================
+grid_html = '<div class="grid-2col">'
 for i in range(0, len(theme_ranking), 2):
-    col1, col2 = st.columns(2)
-    with col1:
-        render_mobile_card(theme_ranking[i])
-    with col2:
-        if i + 1 < len(theme_ranking):
-            render_mobile_card(theme_ranking[i + 1])
+    grid_html += '<div class="grid-row">'
+    grid_html += f'<div class="grid-cell">{make_card_html(theme_ranking[i])}</div>'
+    if i + 1 < len(theme_ranking):
+        grid_html += f'<div class="grid-cell">{make_card_html(theme_ranking[i+1])}</div>'
+    else:
+        grid_html += '<div class="grid-cell"></div>'
+    grid_html += '</div>'
+grid_html += '</div>'
 
+st.markdown(grid_html, unsafe_allow_html=True)
 st.caption(f"네이버 금융 실시간 · {CACHE_TTL//60}분 캐시")
