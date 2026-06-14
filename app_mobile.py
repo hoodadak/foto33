@@ -324,10 +324,18 @@ st.markdown("""
 <style>
 .stApp { background-color: #DBFDF9; }
 
-/* Streamlit 상단 여백 제거 */
-.block-container { padding-left: 0.3rem !important; padding-right: 0.3rem !important; padding-top: 0rem !important; }
-[data-testid="stAppViewContainer"] > section > div { padding-left: 0.2rem !important; padding-right: 0.2rem !important; }
+/* Streamlit 상단/좌우 여백 완전 제거 */
+.block-container { 
+    padding-left: 0.5rem !important; 
+    padding-right: 0.5rem !important; 
+    padding-top: 0rem !important;
+    max-width: 100% !important;
+}
 [data-testid="stHeader"] { display: none !important; }
+[data-testid="stAppViewContainer"] > section > div { 
+    padding-left: 0 !important; 
+    padding-right: 0 !important; 
+}
 
 /* 컬럼 가로배치 강제 */
 div[data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 0.2rem !important; }
@@ -415,7 +423,8 @@ st.markdown('<div style="font-size:22px;font-weight:800;color:#1e293b;padding:4p
 
 # 날짜 + 새로고침 오른쪽 정렬
 st.markdown('<div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:4px;">', unsafe_allow_html=True)
-col_empty, col_d, col_r = st.columns([2, 1, 1])
+# 날짜 + 새로고침 오른쪽 정렬 (화면 안)
+col_empty, col_d, col_r = st.columns([4, 1, 1])
 with col_d:
     selected_date = st.date_input("날짜", value=date.today(),
                                    min_value=date(2026, 1, 1), max_value=date.today(),
