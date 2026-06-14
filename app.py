@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import urllib.parse
 import requests
 import json
@@ -595,9 +596,26 @@ with header_col1:
     st.markdown(f"""
         <div class="tima-header-box">
             <div><span class="logo-main">주도테마</span></div>
-            <div class="date-text">{current_date_str}</div>
         </div>
         """, unsafe_allow_html=True)
+    components.html("""
+        <div id="live-clock" style="font-size:25px; color:#000000; font-weight:500; font-family:'Malgun Gothic',sans-serif; padding-left:15px;"></div>
+        <script>
+        function updateClock() {
+            const now = new Date();
+            const weekdays = ['일','월','화','수','목','금','토'];
+            const mm = String(now.getMonth()+1).padStart(2,'0');
+            const dd = String(now.getDate()).padStart(2,'0');
+            const wd = weekdays[now.getDay()];
+            const hh = String(now.getHours()).padStart(2,'0');
+            const mi = String(now.getMinutes()).padStart(2,'0');
+            const ss = String(now.getSeconds()).padStart(2,'0');
+            document.getElementById('live-clock').innerText = mm+'-'+dd+'('+wd+') '+hh+':'+mi+':'+ss;
+        }
+        updateClock();
+        setInterval(updateClock, 1000);
+        </script>
+    """, height=40)
 with header_col2:
     selected_date = st.date_input(
         "날짜 선택",
