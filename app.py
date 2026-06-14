@@ -606,7 +606,8 @@ if is_market_open_now(now) and 'selected_date' not in st.session_state:
 if "view_mode" not in st.session_state:
     st.session_state.view_mode = "PC"
 
-# PC: 로고+시계+버튼 한 줄 / 모바일: 로고+시계 1행, 버튼 2행
+# PC: 로고+시계+버튼 한 줄 / 모바일: 이 줄 숨기고 모바일 컨트롤만 표시
+st.markdown('<div id="pc-header-bar">', unsafe_allow_html=True)
 header_col1, header_col2, header_col3, header_col4 = st.columns([5, 1, 0.5, 0.5])
 with header_col1:
     st.markdown("""
@@ -649,6 +650,7 @@ with header_col4:
     if st.button("🔄 새로고침", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
+st.markdown('</div>', unsafe_allow_html=True)
 
 # 모바일 모드일 때만 2행에 컨트롤 추가 표시 (HTML로 가로 강제 배치)
 if st.session_state.view_mode == "모바일":
@@ -671,14 +673,26 @@ if st.session_state.view_mode == "모바일":
         if st.button("🔄", use_container_width=True, key="mob_refresh"):
             st.cache_data.clear()
             st.rerun()
-    # 컬럼 강제 가로배치 CSS (모바일 전용)
-    st.markdown("""
-        <style>
-        section[data-testid="stSidebar"] { display: none; }
-        div[data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; }
-        div[data-testid="column"] { min-width: 0 !important; }
-        </style>
-    """, unsafe_allow_html=True)
+    if st.session_state.view_mode == "모바일":
+        st.markdown("""
+            <style>
+            /* 모바일 모드: 헤더 PC 버튼 줄 숨기기 */
+            #pc-header-bar { display: none !important; }
+            #pc-header-bar + div { display: none !important; }
+            /* 컬럼 강제 가로배치 */
+            div[data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; }
+            div[data-testid="column"] { min-width: 0 !important; }
+            /* 모바일 카드 폰트/패딩 축소 */
+            .theme-card-container { padding: 8px !important; margin-bottom: 8px !important; }
+            .theme-card-header { font-size: 13px !important; }
+            .theme-card-money { font-size: 11px !important; }
+            .stock-item-name { font-size: 13px !important; }
+            .txt-up-red, .txt-down-blue { font-size: 12px !important; }
+            span[style*="font-size:19px"] { font-size: 12px !important; }
+            .candle-bar-track { height: 4px !important; margin-top: 4px !important; }
+            .stock-item-box { padding: 6px 8px !important; margin-bottom: 4px !important; }
+            </style>
+        """, unsafe_allow_html=True)
 
 # 모바일 모드에선 mob_date 값을 사용
 if st.session_state.view_mode == "모바일" and "mob_date" in st.session_state:
