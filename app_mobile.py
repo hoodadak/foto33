@@ -368,12 +368,12 @@ div[data-testid="column"] { min-width: 0 !important; flex: 1 !important; padding
     font-weight: 700; font-size: 11px; color: #000000 !important;
     text-decoration: none !important; border-bottom: none !important;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    max-width: 62%;
+    max-width: 70%;
 }
 .stock-name-m:visited, .stock-name-m:hover, .stock-name-m:active {
     color: #000000 !important; text-decoration: none !important; }
-.rate-up { color: #dc2626; font-weight: 700; font-size: 11px; }
-.rate-down { color: #2563eb; font-weight: 700; font-size: 11px; }
+.rate-up { color: #dc2626; font-weight: 700; font-size: 11px; white-space: nowrap; }
+.rate-down { color: #2563eb; font-weight: 700; font-size: 11px; white-space: nowrap; }
 .stock-price-m { font-size: 11px; color: #000000; font-weight: 600; }
 .stock-vol-m { font-size: 11px; font-weight: 600; color: #334155; }
 
@@ -408,14 +408,17 @@ div[data-testid="column"] { min-width: 0 !important; }
 </style>
 """, unsafe_allow_html=True)
 
-h1, h2, h3 = st.columns([2, 3, 1])
-with h1:
-    st.markdown('<div style="font-size:22px;font-weight:800;color:#1e293b;padding-top:6px;">주도테마</div>', unsafe_allow_html=True)
-with h2:
+# ===================== 헤더: 주도테마 + 날짜 + 새로고침 =====================
+# 주도테마 로고 (HTML)
+st.markdown('<div style="font-size:22px;font-weight:800;color:#1e293b;padding:4px 2px 2px 2px;">주도테마</div>', unsafe_allow_html=True)
+
+# 날짜 + 새로고침 한 줄 (HTML grid로 강제 가로배치)
+col_d, col_r = st.columns([4, 1])
+with col_d:
     selected_date = st.date_input("날짜", value=date.today(),
                                    min_value=date(2026, 1, 1), max_value=date.today(),
                                    label_visibility="collapsed")
-with h3:
+with col_r:
     if st.button("🔄", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
