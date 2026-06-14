@@ -323,46 +323,52 @@ def load_history_from_sheet(date_str):
 st.markdown("""
 <style>
 .stApp { background-color: #DBFDF9; }
-.logo-main { font-size: 28px; font-weight: 800; color: #1e293b; }
-.date-text { font-size: 16px; color: #000; font-weight: 500; }
-.header-box { display: flex; justify-content: space-between; align-items: center; padding: 8px 4px; }
 
-/* 핵심: 모바일에서 컬럼 세로 쌓임 방지 */
-div[data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; }
-div[data-testid="column"] { min-width: 0 !important; flex: 1 !important; }
+/* Streamlit 기본 좌우 여백 제거 */
+.block-container { padding-left: 0.3rem !important; padding-right: 0.3rem !important; padding-top: 0.3rem !important; }
+[data-testid="stAppViewContainer"] > section > div { padding-left: 0.2rem !important; padding-right: 0.2rem !important; }
+
+/* 컬럼 가로배치 강제 */
+div[data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 0.2rem !important; }
+div[data-testid="column"] { min-width: 0 !important; flex: 1 !important; padding: 0 !important; }
+
+.logo-main { font-size: 20px; font-weight: 800; color: #1e293b; }
+.date-text { font-size: 12px; color: #000; font-weight: 500; }
+.header-box { display: flex; justify-content: space-between; align-items: center; padding: 2px 2px; }
 
 .theme-card-m {
-    background-color: #334155; border-radius: 10px;
-    padding: 10px; margin-bottom: 12px;
+    background-color: #334155; border-radius: 6px;
+    padding: 5px; margin-bottom: 6px;
 }
 .theme-title-row-m {
     display: flex; justify-content: space-between; align-items: center;
-    color: white; font-weight: 700; font-size: 16px; margin-bottom: 8px;
+    color: white; font-weight: 700; font-size: 10px; margin-bottom: 4px;
+    flex-wrap: wrap; gap: 2px;
 }
-.theme-money-m { background-color: #475569; padding: 2px 6px; border-radius: 5px; font-size: 13px; }
+.theme-money-m { background-color: #475569; padding: 1px 3px; border-radius: 3px; font-size: 9px; }
 .stock-box-m {
-    background-color: white; border-radius: 8px;
-    padding: 8px 10px; margin-bottom: 6px;
+    background-color: white; border-radius: 5px;
+    padding: 4px 5px; margin-bottom: 3px;
 }
 .limit-up-m { background-color: #FFD1DE !important; }
 .stock-row-m { display: flex; justify-content: space-between; align-items: center; }
-.stock-name-m { font-weight: 700; font-size: 15px; color: #000000 !important;
+.stock-name-m { font-weight: 700; font-size: 10px; color: #000000 !important;
                 text-decoration: none !important; border-bottom: none !important; }
 .stock-name-m:visited, .stock-name-m:hover, .stock-name-m:active {
     color: #000000 !important; text-decoration: none !important; }
-.rate-up { color: #dc2626; font-weight: 700; font-size: 15px; }
-.rate-down { color: #2563eb; font-weight: 700; font-size: 15px; }
-.stock-vol-m { font-size: 13px; font-weight: 700; color: #000; text-align: right; margin-top: 2px; }
-.badge-52w-m { background-color: #16a34a; color: #fff; font-size: 11px; font-weight: 700;
-             padding: 1px 5px; border-radius: 4px; margin-left: 4px; }
-.bar-track-m { width: 100%; height: 5px; background-color: #e2e8f0;
-             border-radius: 3px; margin-top: 6px; position: relative; }
-.bar-center-m { position: absolute; left: 50%; top: -2px; width: 2px; height: 9px;
+.rate-up { color: #dc2626; font-weight: 700; font-size: 10px; }
+.rate-down { color: #2563eb; font-weight: 700; font-size: 10px; }
+.stock-vol-m { font-size: 9px; font-weight: 700; color: #000; text-align: right; margin-top: 1px; }
+.badge-52w-m { background-color: #16a34a; color: #fff; font-size: 8px; font-weight: 700;
+             padding: 1px 2px; border-radius: 2px; margin-left: 2px; }
+.bar-track-m { width: 100%; height: 3px; background-color: #e2e8f0;
+             border-radius: 2px; margin-top: 3px; position: relative; }
+.bar-center-m { position: absolute; left: 50%; top: -2px; width: 1px; height: 7px;
               background-color: #94a3b8; z-index: 3; }
 .bar-up-m { position: absolute; left: 50%; top: 0; height: 100%;
-          background-color: #ef4444; border-radius: 0 3px 3px 0; }
+          background-color: #ef4444; border-radius: 0 2px 2px 0; }
 .bar-down-m { position: absolute; right: 50%; top: 0; height: 100%;
-            background-color: #3b82f6; border-radius: 3px 0 0 3px; }
+            background-color: #3b82f6; border-radius: 2px 0 0 2px; }
 </style>
 """, unsafe_allow_html=True)
 
