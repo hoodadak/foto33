@@ -324,9 +324,10 @@ st.markdown("""
 <style>
 .stApp { background-color: #DBFDF9; }
 
-/* Streamlit 기본 좌우 여백 제거 */
-.block-container { padding-left: 0.3rem !important; padding-right: 0.3rem !important; padding-top: 0.3rem !important; }
+/* Streamlit 상단 여백 제거 */
+.block-container { padding-left: 0.3rem !important; padding-right: 0.3rem !important; padding-top: 0rem !important; }
 [data-testid="stAppViewContainer"] > section > div { padding-left: 0.2rem !important; padding-right: 0.2rem !important; }
+[data-testid="stHeader"] { display: none !important; }
 
 /* 컬럼 가로배치 강제 */
 div[data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 0.2rem !important; }
@@ -364,15 +365,15 @@ div[data-testid="column"] { min-width: 0 !important; flex: 1 !important; padding
     margin-top: 1px;
 }
 .stock-name-m {
-    font-weight: 700; font-size: 12px; color: #000000 !important;
+    font-weight: 700; font-size: 11px; color: #000000 !important;
     text-decoration: none !important; border-bottom: none !important;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    max-width: 65%;
+    max-width: 62%;
 }
 .stock-name-m:visited, .stock-name-m:hover, .stock-name-m:active {
     color: #000000 !important; text-decoration: none !important; }
-.rate-up { color: #dc2626; font-weight: 700; font-size: 12px; }
-.rate-down { color: #2563eb; font-weight: 700; font-size: 12px; }
+.rate-up { color: #dc2626; font-weight: 700; font-size: 11px; }
+.rate-down { color: #2563eb; font-weight: 700; font-size: 11px; }
 .stock-price-m { font-size: 11px; color: #000000; font-weight: 600; }
 .stock-vol-m { font-size: 11px; font-weight: 600; color: #334155; }
 
