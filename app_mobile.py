@@ -327,34 +327,34 @@ st.markdown("""
 .date-text { font-size: 16px; color: #000; font-weight: 500; }
 .header-box { display: flex; justify-content: space-between; align-items: center; padding: 8px 4px; }
 
-.theme-card {
+.theme-card-m {
     background-color: #334155; border-radius: 10px;
     padding: 10px; margin-bottom: 12px;
 }
-.theme-title-row {
+.theme-title-row-m {
     display: flex; justify-content: space-between; align-items: center;
     color: white; font-weight: 700; font-size: 16px; margin-bottom: 8px;
 }
-.theme-money { background-color: #475569; padding: 2px 6px; border-radius: 5px; font-size: 13px; }
-.stock-box {
+.theme-money-m { background-color: #475569; padding: 2px 6px; border-radius: 5px; font-size: 13px; }
+.stock-box-m {
     background-color: white; border-radius: 8px;
     padding: 8px 10px; margin-bottom: 6px;
 }
-.stock-box.limit-up { background-color: #FFD1DE !important; }
-.stock-row { display: flex; justify-content: space-between; align-items: center; }
-.stock-name { font-weight: 700; font-size: 15px; color: #000; text-decoration: none; }
+.limit-up-m { background-color: #FFD1DE !important; }
+.stock-row-m { display: flex; justify-content: space-between; align-items: center; }
+.stock-name-m { font-weight: 700; font-size: 15px; color: #000; text-decoration: none; }
 .rate-up { color: #dc2626; font-weight: 700; font-size: 15px; }
 .rate-down { color: #2563eb; font-weight: 700; font-size: 15px; }
-.stock-vol { font-size: 13px; font-weight: 700; color: #000; text-align: right; margin-top: 2px; }
-.badge-52w { background-color: #16a34a; color: #fff; font-size: 11px; font-weight: 700;
+.stock-vol-m { font-size: 13px; font-weight: 700; color: #000; text-align: right; margin-top: 2px; }
+.badge-52w-m { background-color: #16a34a; color: #fff; font-size: 11px; font-weight: 700;
              padding: 1px 5px; border-radius: 4px; margin-left: 4px; }
-.bar-track { width: 100%; height: 5px; background-color: #e2e8f0;
+.bar-track-m { width: 100%; height: 5px; background-color: #e2e8f0;
              border-radius: 3px; margin-top: 6px; position: relative; }
-.bar-center { position: absolute; left: 50%; top: -2px; width: 2px; height: 9px;
+.bar-center-m { position: absolute; left: 50%; top: -2px; width: 2px; height: 9px;
               background-color: #94a3b8; z-index: 3; }
-.bar-up { position: absolute; left: 50%; top: 0; height: 100%;
+.bar-up-m { position: absolute; left: 50%; top: 0; height: 100%;
           background-color: #ef4444; border-radius: 0 3px 3px 0; }
-.bar-down { position: absolute; right: 50%; top: 0; height: 100%;
+.bar-down-m { position: absolute; right: 50%; top: 0; height: 100%;
             background-color: #3b82f6; border-radius: 3px 0 0 3px; }
 </style>
 """, unsafe_allow_html=True)
@@ -429,7 +429,17 @@ for theme in theme_ranking:
 
     total_sum_str = f"KRX {theme['total_sum']:,.0f}억"
 
-    stocks_html = ""
+    # 테마 헤더
+    st.markdown(
+        f'<div class="theme-card-m">'
+        f'<div class="theme-title-row-m">'
+        f'<span>{theme["name"]} {icons}</span>'
+        f'<span class="theme-money-m">{total_sum_str}</span>'
+        f'</div>',
+        unsafe_allow_html=True
+    )
+
+    # 종목 카드
     for s in theme["stocks"]:
         rate_num = s["rate_num"]
         is_limit_up = s.get("is_limit_up", False) or rate_num >= 29.5
@@ -441,33 +451,27 @@ for theme in theme_ranking:
             rate_class = "rate-down"
         width_pct = min(abs(rate_num) / 30 * 50, 50)
         bar_dir = "bar-up" if rate_num >= 0 else "bar-down"
-        box_class = "stock-box limit-up" if is_limit_up else "stock-box"
-        badge_52w = '<span class="badge-52w">52주신고가</span>' if s.get("is_52w_high") else ""
+        box_class = "stock-box-m limit-up-m" if is_limit_up else "stock-box-m"
+        badge_52w = '<span class="badge-52w-m">52주신고가</span>' if s.get("is_52w_high") else ""
         encoded = urllib.parse.quote(s["name"])
         news_url = f"https://search.naver.com/search.naver?where=news&query={encoded}"
         vol_str = f"{s['amount_eok']:,.0f}억(KRX)"
 
-        stocks_html += f"""
-        <div class="{box_class}">
-            <div class="stock-row">
-                <span><a href="{news_url}" target="_blank" class="stock-name">{s['name']}</a>{badge_52w}</span>
-                <span class="{rate_class}">{rate_str}</span>
-            </div>
-            <div class="stock-vol">{vol_str}</div>
-            <div class="bar-track">
-                <div class="bar-center"></div>
-                <div class="{bar_dir}" style="width:{width_pct:.0f}%;"></div>
-            </div>
-        </div>"""
+        st.markdown(
+            f'<div class="{box_class}">'
+            f'<div class="stock-row-m">'
+            f'<span><a href="{news_url}" target="_blank" class="stock-name-m">{s["name"]}</a>{badge_52w}</span>'
+            f'<span class="{rate_class}">{rate_str}</span>'
+            f'</div>'
+            f'<div class="stock-vol-m">{vol_str}</div>'
+            f'<div class="bar-track-m">'
+            f'<div class="bar-center-m"></div>'
+            f'<div class="{bar_dir}-m" style="width:{width_pct:.0f}%;"></div>'
+            f'</div>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
 
-    card_html = f"""
-    <div class="theme-card">
-        <div class="theme-title-row">
-            <span>{theme['name']} {icons}</span>
-            <span class="theme-money">{total_sum_str}</span>
-        </div>
-        {stocks_html}
-    </div>"""
-    st.markdown(card_html, unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
 st.caption(f"네이버 금융 실시간 · {CACHE_TTL//60}분 캐시")
