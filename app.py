@@ -809,7 +809,7 @@ def render_theme_card(theme):
             f'<span class="{data["color"]}">{data["rate"]}</span>'
             f'</div>'
             f'<div class="stock-item-meta">'
-            f'<span style="color:#000000; font-size:15px; font-weight:600;">{data["price"]}</span>'
+            f'<span style="color:#000000; font-size:19px; font-weight:700;">{data["price"]}</span>'
             f'<span style="color:#000000; font-size:19px; font-weight:700;">{data["vol"]}</span>'
             f'</div>'
             f'<div class="candle-bar-track">'
