@@ -593,29 +593,30 @@ if is_market_open_now(now) and 'selected_date' not in st.session_state:
 # ===================== 상단 헤더 + 날짜 선택 + 새로고침 버튼 =====================
 header_col1, header_col2, header_col3, header_col4 = st.columns([5, 1, 0.5, 0.5])
 with header_col1:
-    st.markdown(f"""
+    st.markdown("""
         <div class="tima-header-box">
             <div><span class="logo-main">주도테마</span></div>
+            <div id="live-clock" class="date-text"></div>
         </div>
         """, unsafe_allow_html=True)
     components.html("""
-        <div id="live-clock" style="font-size:25px; color:#000000; font-weight:500; font-family:'Malgun Gothic',sans-serif; padding-left:15px;"></div>
         <script>
         function updateClock() {
-            const now = new Date();
             const weekdays = ['일','월','화','수','목','금','토'];
+            const now = new Date();
             const mm = String(now.getMonth()+1).padStart(2,'0');
             const dd = String(now.getDate()).padStart(2,'0');
             const wd = weekdays[now.getDay()];
             const hh = String(now.getHours()).padStart(2,'0');
             const mi = String(now.getMinutes()).padStart(2,'0');
             const ss = String(now.getSeconds()).padStart(2,'0');
-            document.getElementById('live-clock').innerText = mm+'-'+dd+'('+wd+') '+hh+':'+mi+':'+ss;
+            const el = window.parent.document.getElementById('live-clock');
+            if (el) el.innerText = mm+'-'+dd+'('+wd+') '+hh+':'+mi+':'+ss;
         }
         updateClock();
         setInterval(updateClock, 1000);
         </script>
-    """, height=40)
+    """, height=0)
 with header_col2:
     selected_date = st.date_input(
         "날짜 선택",
