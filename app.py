@@ -3,7 +3,10 @@ import urllib.parse
 import requests
 import json
 import os
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
+
+KST = timezone(timedelta(hours=9))
+now = datetime.now(KST)
 from bs4 import BeautifulSoup
 
 # gspread는 선택적 임포트 (없어도 실시간 기능은 동작)
