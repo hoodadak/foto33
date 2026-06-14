@@ -327,6 +327,10 @@ st.markdown("""
 .date-text { font-size: 16px; color: #000; font-weight: 500; }
 .header-box { display: flex; justify-content: space-between; align-items: center; padding: 8px 4px; }
 
+/* 핵심: 모바일에서 컬럼 세로 쌓임 방지 */
+div[data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; }
+div[data-testid="column"] { min-width: 0 !important; flex: 1 !important; }
+
 .theme-card-m {
     background-color: #334155; border-radius: 10px;
     padding: 10px; margin-bottom: 12px;
@@ -342,7 +346,10 @@ st.markdown("""
 }
 .limit-up-m { background-color: #FFD1DE !important; }
 .stock-row-m { display: flex; justify-content: space-between; align-items: center; }
-.stock-name-m { font-weight: 700; font-size: 15px; color: #000; text-decoration: none; }
+.stock-name-m { font-weight: 700; font-size: 15px; color: #000000 !important;
+                text-decoration: none !important; border-bottom: none !important; }
+.stock-name-m:visited, .stock-name-m:hover, .stock-name-m:active {
+    color: #000000 !important; text-decoration: none !important; }
 .rate-up { color: #dc2626; font-weight: 700; font-size: 15px; }
 .rate-down { color: #2563eb; font-weight: 700; font-size: 15px; }
 .stock-vol-m { font-size: 13px; font-weight: 700; color: #000; text-align: right; margin-top: 2px; }
@@ -417,8 +424,8 @@ if not theme_ranking:
     st.warning("데이터를 불러오지 못했습니다.")
     st.stop()
 
-# ===================== 테마 카드 렌더링 =====================
-for theme in theme_ranking:
+# ===================== 테마 카드 렌더링 (2열) =====================
+def render_mobile_card(theme):
     icons = ""
     if theme.get("is_top_amount"):
         icons += '<span style="filter:hue-rotate(140deg) saturate(3);">👍</span>'
@@ -429,7 +436,6 @@ for theme in theme_ranking:
 
     total_sum_str = f"KRX {theme['total_sum']:,.0f}억"
 
-    # 테마 헤더
     st.markdown(
         f'<div class="theme-card-m">'
         f'<div class="theme-title-row-m">'
@@ -439,7 +445,6 @@ for theme in theme_ranking:
         unsafe_allow_html=True
     )
 
-    # 종목 카드
     for s in theme["stocks"]:
         rate_num = s["rate_num"]
         is_limit_up = s.get("is_limit_up", False) or rate_num >= 29.5
@@ -473,5 +478,15 @@ for theme in theme_ranking:
         )
 
     st.markdown('</div>', unsafe_allow_html=True)
+
+
+# 2열 배치: 홀수 인덱스는 왼쪽, 짝수 인덱스는 오른쪽
+for i in range(0, len(theme_ranking), 2):
+    col1, col2 = st.columns(2)
+    with col1:
+        render_mobile_card(theme_ranking[i])
+    with col2:
+        if i + 1 < len(theme_ranking):
+            render_mobile_card(theme_ranking[i + 1])
 
 st.caption(f"네이버 금융 실시간 · {CACHE_TTL//60}분 캐시")
