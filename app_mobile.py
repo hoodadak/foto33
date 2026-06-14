@@ -355,9 +355,10 @@ div[data-testid="column"] { min-width: 0 !important; flex: 1 !important; padding
 }
 .limit-up-m { background-color: #FFD1DE !important; }
 
-/* 종목 1행: 종목명(좌) + 등락률(우) */
+/* 종목 1행: 종목명(좌, flex:1) + 52주신고가+등락률(우, nowrap) */
 .stock-row1-m {
     display: flex; justify-content: space-between; align-items: center;
+    gap: 4px; overflow: hidden;
 }
 /* 종목 2행: 현재가(좌) + 거래대금(우) */
 .stock-row2-m {
@@ -365,10 +366,10 @@ div[data-testid="column"] { min-width: 0 !important; flex: 1 !important; padding
     margin-top: 1px;
 }
 .stock-name-m {
-    font-weight: 700; font-size: 11px; color: #000000 !important;
+    font-weight: 700; font-size: 12px; color: #000000 !important;
     text-decoration: none !important; border-bottom: none !important;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    max-width: 70%;
+    flex: 1; min-width: 0;
 }
 .stock-name-m:visited, .stock-name-m:hover, .stock-name-m:active {
     color: #000000 !important; text-decoration: none !important; }
@@ -412,8 +413,9 @@ div[data-testid="column"] { min-width: 0 !important; }
 # 주도테마 로고 (HTML)
 st.markdown('<div style="font-size:22px;font-weight:800;color:#1e293b;padding:4px 2px 2px 2px;">주도테마</div>', unsafe_allow_html=True)
 
-# 날짜 + 새로고침 한 줄 (HTML grid로 강제 가로배치)
-col_d, col_r = st.columns([4, 1])
+# 날짜 + 새로고침 오른쪽 정렬
+st.markdown('<div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:4px;">', unsafe_allow_html=True)
+col_d, col_r = st.columns([1, 1])
 with col_d:
     selected_date = st.date_input("날짜", value=date.today(),
                                    min_value=date(2026, 1, 1), max_value=date.today(),
@@ -422,6 +424,7 @@ with col_r:
     if st.button("🔄", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
+st.markdown('</div>', unsafe_allow_html=True)
 
 # ===================== 데이터 로드 =====================
 is_today = (selected_date == date.today())
@@ -475,10 +478,11 @@ def make_card_html(theme):
         stocks_html += (
             f'<div class="{box_class}">'
             f'<div class="stock-row1-m">'
-            f'<span style="display:flex;align-items:center;gap:3px;min-width:0;overflow:hidden;">'
-            f'<a href="{news_url}" target="_blank" class="stock-name-m">{s["name"]}</a>{badge_52w}'
+            f'<a href="{news_url}" target="_blank" class="stock-name-m">{s["name"]}</a>'
+            f'<span style="display:flex;align-items:center;gap:3px;white-space:nowrap;">'
+            f'{badge_52w}'
+            f'<span class="{rate_class}">{rate_str}</span>'
             f'</span>'
-            f'<span class="{rate_class}" style="white-space:nowrap;margin-left:4px;">{rate_str}</span>'
             f'</div>'
             f'<div class="stock-row2-m">'
             f'<span class="stock-price-m">{price_str}</span>'
