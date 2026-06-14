@@ -336,34 +336,53 @@ div[data-testid="column"] { min-width: 0 !important; flex: 1 !important; padding
 .date-text { font-size: 12px; color: #000; font-weight: 500; }
 .header-box { display: flex; justify-content: space-between; align-items: center; padding: 2px 2px; }
 
+/* 테마 카드 */
 .theme-card-m {
-    background-color: #334155; border-radius: 6px;
-    padding: 5px; margin-bottom: 6px;
+    background-color: #1e3a5f; border-radius: 6px;
+    padding: 5px; margin-bottom: 5px;
 }
 .theme-title-row-m {
     display: flex; justify-content: space-between; align-items: center;
-    color: white; font-weight: 700; font-size: 10px; margin-bottom: 4px;
-    flex-wrap: wrap; gap: 2px;
+    color: white; font-weight: 800; font-size: 13px; margin-bottom: 4px;
 }
-.theme-money-m { background-color: #475569; padding: 1px 3px; border-radius: 3px; font-size: 9px; }
+.theme-money-m { color: #fbbf24; font-size: 12px; font-weight: 700; }
+
+/* 종목 박스 */
 .stock-box-m {
-    background-color: white; border-radius: 5px;
+    background-color: white; border-radius: 4px;
     padding: 4px 5px; margin-bottom: 3px;
 }
 .limit-up-m { background-color: #FFD1DE !important; }
-.stock-row-m { display: flex; justify-content: space-between; align-items: center; }
-.stock-name-m { font-weight: 700; font-size: 10px; color: #000000 !important;
-                text-decoration: none !important; border-bottom: none !important; }
+
+/* 종목 1행: 종목명(좌) + 등락률(우) */
+.stock-row1-m {
+    display: flex; justify-content: space-between; align-items: center;
+}
+/* 종목 2행: 현재가(좌) + 거래대금(우) */
+.stock-row2-m {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 1px;
+}
+.stock-name-m {
+    font-weight: 700; font-size: 12px; color: #000000 !important;
+    text-decoration: none !important; border-bottom: none !important;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 65%;
+}
 .stock-name-m:visited, .stock-name-m:hover, .stock-name-m:active {
     color: #000000 !important; text-decoration: none !important; }
-.rate-up { color: #dc2626; font-weight: 700; font-size: 10px; }
-.rate-down { color: #2563eb; font-weight: 700; font-size: 10px; }
-.stock-vol-m { font-size: 9px; font-weight: 700; color: #000; text-align: right; margin-top: 1px; }
+.rate-up { color: #dc2626; font-weight: 700; font-size: 12px; }
+.rate-down { color: #2563eb; font-weight: 700; font-size: 12px; }
+.stock-price-m { font-size: 11px; color: #334155; }
+.stock-vol-m { font-size: 11px; font-weight: 600; color: #334155; }
+
 .badge-52w-m { background-color: #16a34a; color: #fff; font-size: 8px; font-weight: 700;
-             padding: 1px 2px; border-radius: 2px; margin-left: 2px; }
-.bar-track-m { width: 100%; height: 3px; background-color: #e2e8f0;
+             padding: 1px 2px; border-radius: 2px; margin-left: 1px; }
+
+/* 캔들바 */
+.bar-track-m { width: 100%; height: 4px; background-color: #e2e8f0;
              border-radius: 2px; margin-top: 3px; position: relative; }
-.bar-center-m { position: absolute; left: 50%; top: -2px; width: 1px; height: 7px;
+.bar-center-m { position: absolute; left: 50%; top: -2px; width: 1px; height: 8px;
               background-color: #94a3b8; z-index: 3; }
 .bar-up-m { position: absolute; left: 50%; top: 0; height: 100%;
           background-color: #ef4444; border-radius: 0 2px 2px 0; }
@@ -470,11 +489,14 @@ def render_mobile_card(theme):
 
         st.markdown(
             f'<div class="{box_class}">'
-            f'<div class="stock-row-m">'
-            f'<span><a href="{news_url}" target="_blank" class="stock-name-m">{s["name"]}</a>{badge_52w}</span>'
+            f'<div class="stock-row1-m">'
+            f'<a href="{news_url}" target="_blank" class="stock-name-m">{s["name"]}</a>{badge_52w}'
             f'<span class="{rate_class}">{rate_str}</span>'
             f'</div>'
-            f'<div class="stock-vol-m">{vol_str}</div>'
+            f'<div class="stock-row2-m">'
+            f'<span class="stock-price-m">{s["price"]:,}</span>'
+            f'<span class="stock-vol-m">{vol_str}</span>'
+            f'</div>'
             f'<div class="bar-track-m">'
             f'<div class="bar-center-m"></div>'
             f'<div class="{bar_dir}-m" style="width:{width_pct:.0f}%;"></div>'
