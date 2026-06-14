@@ -587,7 +587,7 @@ if is_market_open_now(now) and 'selected_date' not in st.session_state:
     )
 
 # ===================== 상단 헤더 + 날짜 선택 + 새로고침 버튼 =====================
-header_col1, header_col2, header_col3, header_col4 = st.columns([5, 1, 1, 0.5])
+header_col1, header_col2, header_col3, header_col4 = st.columns([5, 1, 0.5, 0.5])
 with header_col1:
     st.markdown(f"""
         <div class="tima-header-box">
