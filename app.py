@@ -547,7 +547,7 @@ st.markdown("""
         padding: 10px 16px; color: #94a3b8; font-size: 14px; margin-bottom: 22px;
     }
     .theme-card-container {
-        background-color: #334155; border-radius: 10px; border: 1px solid #1e293b;
+        background-color: #1e3a5f; border-radius: 10px; border: 1px solid #1e293b;
         padding: 14px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         position: relative; overflow: visible;
     }
@@ -560,7 +560,7 @@ st.markdown("""
         flex-wrap: wrap; gap: 8px; margin-bottom: 10px;
     }
     .theme-card-title { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-    .theme-card-money { background-color: #475569; padding: 2px 8px; border-radius: 5px; font-size: 19px; font-weight: 500; }
+    .theme-card-money { color: #fbbf24; font-size: 19px; font-weight: 700; }
     .theme-card-news {
         font-size: 13px; color: #475569; margin: 10px 0; padding: 2px 4px;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-bottom: 1px dashed #e2e8f0;
@@ -573,7 +573,7 @@ st.markdown("""
     .stock-item-main { display: flex; justify-content: space-between; align-items: center; }
     .stock-item-name { font-weight: 700; font-size: 19px; color: #000000 !important; text-decoration: none !important; border-bottom: none !important; }
     .stock-item-name:visited, .stock-item-name:hover, .stock-item-name:active { color: #000000 !important; text-decoration: none !important; border-bottom: none !important; }
-    .stock-item-meta { display: flex; justify-content: flex-end; font-size: 11px; color: #94a3b8; margin-top: 2px; flex-wrap: wrap; gap: 4px; }
+    .stock-item-meta { display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; margin-top: 2px; flex-wrap: wrap; gap: 4px; }
 
     .candle-bar-track {
         width: 100%; height: 6px; background-color: #e2e8f0; border-radius: 3px; margin-top: 8px; position: relative;
@@ -809,6 +809,7 @@ def render_theme_card(theme):
             f'<span class="{data["color"]}">{data["rate"]}</span>'
             f'</div>'
             f'<div class="stock-item-meta">'
+            f'<span style="color:#000000; font-size:15px; font-weight:600;">{data["price"]}</span>'
             f'<span style="color:#000000; font-size:19px; font-weight:700;">{data["vol"]}</span>'
             f'</div>'
             f'<div class="candle-bar-track">'
