@@ -161,20 +161,52 @@ div[data-testid="column"] { min-width: 0 !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# ===================== 헤더: 주도테마 + 날짜 + 새로고침 =====================
-# 날짜/새로고침을 테마카드와 동일한 2열 grid로 배치
+# ===================== 헤더: 주도테마 =====================
 st.markdown('<div style="font-size:22px;font-weight:800;color:#1e293b;padding:4px 2px 4px 2px;">주도테마</div>', unsafe_allow_html=True)
 
-col_d, col_r = st.columns(2)
-with col_d:
-    selected_date = st.date_input("날짜", value=date.today(),
-                                   min_value=date(2026, 1, 1), max_value=date.today(),
-                                   label_visibility="collapsed",
-                                   key="date_sel")
-with col_r:
-    if st.button("🔄 새로고침", use_container_width=True):
-        st.cache_data.clear()
-        st.rerun()
+# 날짜/새로고침 - 테마박스와 동일한 HTML grid 2열
+selected_date_state = st.session_state.get("selected_date", date.today().strftime("%Y-%m-%d"))
+st.markdown(f"""
+<div style="display:flex; gap:5px; margin-bottom:6px;">
+    <div style="flex:1;">
+        <input type="date" id="mobile_date" value="{selected_date_state}"
+            min="2026-01-01" max="{date.today().strftime('%Y-%m-%d')}"
+            style="width:100%; font-size:14px; padding:8px; border-radius:6px;
+                   border:1px solid #ccc; background:#1e293b; color:white; box-sizing:border-box;"
+            onchange="document.getElementById('date_val').value=this.value; document.getElementById('date_submit').click();">
+    </div>
+    <div style="flex:1;">
+        <button onclick="document.getElementById('refresh_btn_hidden').click();"
+            style="width:100%; font-size:14px; padding:8px; border-radius:6px;
+                   border:none; background:#1e293b; color:white; cursor:pointer;">
+            🔄 새로고침
+        </button>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# 히든 입력값 처리
+date_val = st.text_input("날짜값", value=selected_date_state, key="date_val", label_visibility="hidden")
+col_h1, col_h2 = st.columns(2)
+with col_h1:
+    date_submit = st.button("날짜적용", key="date_submit", label_visibility="hidden" if hasattr(st.button, 'label_visibility') else None)
+with col_h2:
+    refresh_hidden = st.button("새로고침실행", key="refresh_btn_hidden", label_visibility="hidden" if hasattr(st.button, 'label_visibility') else None)
+
+if date_submit and date_val:
+    st.session_state["selected_date"] = date_val
+    st.rerun()
+if refresh_hidden:
+    st.cache_data.clear()
+    st.session_state["selected_date"] = date.today().strftime("%Y-%m-%d")
+    st.rerun()
+
+try:
+    selected_date = date.fromisoformat(selected_date_state)
+    if selected_date > date.today():
+        selected_date = date.today()
+except Exception:
+    selected_date = date.today()
 
 # ===================== 데이터 로드 =====================
 is_today = (selected_date == date.today())
