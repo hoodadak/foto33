@@ -155,69 +155,24 @@ div[data-testid="column"] { min-width: 0 !important; }
 """, unsafe_allow_html=True)
 
 # ===================== 헤더: 주도테마 + 날짜 + 새로고침 =====================
-# URL 파라미터에서 날짜 읽기
-params = st.query_params
-selected_date_str = params.get("d", date.today().strftime("%Y-%m-%d"))
-try:
-    selected_date = date.fromisoformat(selected_date_str)
-    if selected_date > date.today():
-        selected_date = date.today()
-except Exception:
-    selected_date = date.today()
-    selected_date_str = selected_date.strftime("%Y-%m-%d")
-
-# 새로고침 파라미터 처리
-if params.get("refresh") == "1":
-    st.cache_data.clear()
-    st.query_params["refresh"] = "0"
-    st.rerun()
-
-today_str = date.today().strftime("%Y-%m-%d")
-
-# 헤더: 주도테마 + 날짜 + 새로고침
-# location.href 대신 top/parent 모두 시도하는 방식
-components.html(f"""
+st.markdown("""
 <style>
-  body {{ margin: 0; padding: 0; background: transparent; }}
-  .header-wrap {{
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 4px 2px; font-family: sans-serif;
-  }}
-  .logo {{ font-size: 22px; font-weight: 800; color: #1e293b; }}
-  .btn-wrap {{ display: flex; align-items: center; gap: 6px; }}
-  input[type=date] {{
-    font-size: 13px; padding: 4px 6px;
-    border-radius: 6px; border: 1px solid #ccc;
-    background: #1e293b; color: white;
-  }}
-  button {{
-    font-size: 16px; padding: 4px 10px;
-    border-radius: 6px; border: none;
-    background: #1e293b; color: white; cursor: pointer;
-  }}
+div[data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 0.2rem !important; }
+div[data-testid="column"] { min-width: 0 !important; flex: 1 !important; padding: 0 !important; }
 </style>
-<div class="header-wrap">
-  <div class="logo">주도테마</div>
-  <div class="btn-wrap">
-    <input type="date" id="dp" value="{selected_date_str}"
-      min="2026-01-01" max="{today_str}">
-    <button id="rb">🔄</button>
-  </div>
-</div>
-<script>
-function go(url) {{
-  try {{ window.top.location.href = url; return; }} catch(e) {{}}
-  try {{ window.parent.location.href = url; return; }} catch(e) {{}}
-  window.location.href = url;
-}}
-document.getElementById('dp').addEventListener('change', function() {{
-  go('?d=' + this.value);
-}});
-document.getElementById('rb').addEventListener('click', function() {{
-  go('?d={selected_date_str}&refresh=1');
-}});
-</script>
-""", height=55)
+""", unsafe_allow_html=True)
+
+st.markdown('<div style="font-size:22px;font-weight:800;color:#1e293b;padding:4px 2px 2px 2px;">주도테마</div>', unsafe_allow_html=True)
+
+col_d, col_r, col_empty = st.columns([2, 1, 3])
+with col_d:
+    selected_date = st.date_input("날짜", value=date.today(),
+                                   min_value=date(2026, 1, 1), max_value=date.today(),
+                                   label_visibility="collapsed")
+with col_r:
+    if st.button("🔄", use_container_width=True):
+        st.cache_data.clear()
+        st.rerun()
 
 # ===================== 데이터 로드 =====================
 is_today = (selected_date == date.today())
