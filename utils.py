@@ -468,9 +468,13 @@ def load_history(date_str):
         creds_json = os.environ.get("GOOGLE_CREDENTIALS", "")
         sheet_id = os.environ.get("SHEET_ID", "")
         if not creds_json:
-            return None, "GOOGLE_CREDENTIALS 환경변수 없음"
+            return None, "GOOGLE_CREDENTIALS 없음 (길이:0)"
         if not sheet_id:
-            return None, "SHEET_ID 환경변수 없음"
+            return None, "SHEET_ID 없음"
+        # 앞뒤 공백/줄바꿈 제거
+        creds_json = creds_json.strip()
+        if not creds_json.startswith("{"):
+            return None, f"JSON 형식 오류: 첫글자='{creds_json[:10]}'"
         creds_dict = json.loads(creds_json)
         scopes = [
             "https://spreadsheets.google.com/feeds",
@@ -491,19 +495,25 @@ def load_history(date_str):
             if not row or not row[0]:
                 continue
             stocks = []
-            for i in range(3, min(18, len(row)), 3):
+            for i in range(3, min(23, len(row)), 4):
                 name = row[i] if i < len(row) else ""
                 rate = row[i+1] if i+1 < len(row) else ""
                 vol = row[i+2] if i+2 < len(row) else ""
+                price = row[i+3] if i+3 < len(row) else "0"
                 if name:
                     try:
                         rate_num = float(rate.replace("%", "").replace("+", ""))
                     except ValueError:
                         rate_num = 0.0
+                    try:
+                        price_int = int(str(price).replace(",", ""))
+                    except ValueError:
+                        price_int = 0
                     stocks.append({
                         "name": name, "rate_num": rate_num,
                         "amount_eok": float(vol.replace(",", "")) if vol else 0.0,
-                        "price": 0, "is_limit_up": rate_num >= 29.5,
+                        "price": price_int,
+                        "is_limit_up": rate_num >= 29.5,
                         "is_52w_high": False, "limit_up_time": None
                     })
             try:
