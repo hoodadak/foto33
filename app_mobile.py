@@ -216,6 +216,16 @@ if not theme_ranking:
     st.warning("데이터를 불러오지 못했습니다.")
     st.stop()
 
+# 과거 데이터에 누락된 키 기본값 설정
+for i, t in enumerate(theme_ranking):
+    t.setdefault("is_top_amount", i == 0)
+    t.setdefault("has_52w_high", False)
+    t.setdefault("has_limit_up", False)
+    for s in t.get("stocks", []):
+        s.setdefault("is_52w_high", False)
+        s.setdefault("is_limit_up", s.get("rate_num", 0) >= 29.5)
+        s.setdefault("price", 0)
+
 # ===================== 테마 카드 HTML 생성 함수 =====================
 def make_card_html(theme):
     icons = ""
