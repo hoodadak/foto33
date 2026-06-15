@@ -174,15 +174,14 @@ if params.get("refresh") == "1":
 
 today_str = date.today().strftime("%Y-%m-%d")
 
-# 헤더: 주도테마 + 날짜 + 새로고침 (순수 HTML, st.columns 없음)
+# 헤더: 주도테마 + 날짜 + 새로고침
+# location.href 대신 top/parent 모두 시도하는 방식
 components.html(f"""
 <style>
+  body {{ margin: 0; padding: 0; background: transparent; }}
   .header-wrap {{
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 4px 2px;
-    font-family: sans-serif;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 4px 2px; font-family: sans-serif;
   }}
   .logo {{ font-size: 22px; font-weight: 800; color: #1e293b; }}
   .btn-wrap {{ display: flex; align-items: center; gap: 6px; }}
@@ -200,12 +199,24 @@ components.html(f"""
 <div class="header-wrap">
   <div class="logo">주도테마</div>
   <div class="btn-wrap">
-    <input type="date" value="{selected_date_str}"
-      min="2026-01-01" max="{today_str}"
-      onchange="window.parent.location.href='?d='+this.value">
-    <button onclick="window.parent.location.href='?d={selected_date_str}&refresh=1'">🔄</button>
+    <input type="date" id="dp" value="{selected_date_str}"
+      min="2026-01-01" max="{today_str}">
+    <button id="rb">🔄</button>
   </div>
 </div>
+<script>
+function go(url) {{
+  try {{ window.top.location.href = url; return; }} catch(e) {{}}
+  try {{ window.parent.location.href = url; return; }} catch(e) {{}}
+  window.location.href = url;
+}}
+document.getElementById('dp').addEventListener('change', function() {{
+  go('?d=' + this.value);
+}});
+document.getElementById('rb').addEventListener('click', function() {{
+  go('?d={selected_date_str}&refresh=1');
+}});
+</script>
 """, height=55)
 
 # ===================== 데이터 로드 =====================
