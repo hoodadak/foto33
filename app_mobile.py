@@ -154,29 +154,38 @@ if is_market_open_now(now):
     st.markdown(f"<meta http-equiv='refresh' content='{CACHE_TTL}'>", unsafe_allow_html=True)
 
 # ===================== 헤더 + 날짜 + 새로고침 한 줄 =====================
-st.markdown("""
-<style>
-div[data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; }
-div[data-testid="column"] { min-width: 0 !important; }
-</style>
-""", unsafe_allow_html=True)
 
-# ===================== 헤더: 주도테마 =====================
+# URL 파라미터로 날짜/새로고침 처리
+params = st.query_params
+selected_date_str_param = params.get("d", date.today().strftime("%Y-%m-%d"))
+try:
+    selected_date = date.fromisoformat(selected_date_str_param)
+    if selected_date > date.today():
+        selected_date = date.today()
+except Exception:
+    selected_date = date.today()
+    selected_date_str_param = selected_date.strftime("%Y-%m-%d")
+
+if params.get("refresh") == "1":
+    st.cache_data.clear()
+    st.query_params["refresh"] = "0"
+    st.rerun()
+
+today_str = date.today().strftime("%Y-%m-%d")
+
+# HTML 2열 버튼 (위치 완벽, URL 파라미터로 기능 처리)
 st.markdown('<div style="font-size:22px;font-weight:800;color:#1e293b;padding:4px 2px 4px 2px;">주도테마</div>', unsafe_allow_html=True)
-
-# 날짜/새로고침 - 테마박스와 동일한 HTML grid 2열
-selected_date_state = st.session_state.get("selected_date", date.today().strftime("%Y-%m-%d"))
 st.markdown(f"""
 <div style="display:flex; gap:5px; margin-bottom:6px;">
     <div style="flex:1;">
-        <input type="date" id="mobile_date" value="{selected_date_state}"
-            min="2026-01-01" max="{date.today().strftime('%Y-%m-%d')}"
+        <input type="date" value="{selected_date_str_param}"
+            min="2026-01-01" max="{today_str}"
             style="width:100%; font-size:14px; padding:8px; border-radius:6px;
                    border:1px solid #ccc; background:#1e293b; color:white; box-sizing:border-box;"
-            onchange="document.getElementById('date_val').value=this.value; document.getElementById('date_submit').click();">
+            onchange="location.href='?d='+this.value">
     </div>
     <div style="flex:1;">
-        <button onclick="document.getElementById('refresh_btn_hidden').click();"
+        <button onclick="location.href='?d={selected_date_str_param}&refresh=1'"
             style="width:100%; font-size:14px; padding:8px; border-radius:6px;
                    border:none; background:#1e293b; color:white; cursor:pointer;">
             🔄 새로고침
@@ -184,39 +193,6 @@ st.markdown(f"""
     </div>
 </div>
 """, unsafe_allow_html=True)
-
-# 히든 입력값 처리
-st.markdown('<div style="display:none">', unsafe_allow_html=True)
-date_val = st.text_input("날짜값", value=selected_date_state, key="date_val")
-st.markdown('</div>', unsafe_allow_html=True)
-# 히든 버튼으로 날짜/새로고침 처리
-col_h1, col_h2 = st.columns(2)
-with col_h1:
-    date_submit = st.button("날짜적용", key="date_submit")
-with col_h2:
-    refresh_hidden = st.button("새로고침실행", key="refresh_btn_hidden")
-
-# 히든 버튼 숨기기
-st.markdown("""
-<style>
-button[kind="secondary"] { display: none !important; }
-</style>
-""", unsafe_allow_html=True)
-
-if date_submit and date_val:
-    st.session_state["selected_date"] = date_val
-    st.rerun()
-if refresh_hidden:
-    st.cache_data.clear()
-    st.session_state["selected_date"] = date.today().strftime("%Y-%m-%d")
-    st.rerun()
-
-try:
-    selected_date = date.fromisoformat(selected_date_state)
-    if selected_date > date.today():
-        selected_date = date.today()
-except Exception:
-    selected_date = date.today()
 
 # ===================== 데이터 로드 =====================
 is_today = (selected_date == date.today())
