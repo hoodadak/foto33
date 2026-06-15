@@ -495,11 +495,15 @@ def load_history(date_str):
             if not row or not row[0]:
                 continue
             stocks = []
-            for i in range(3, min(23, len(row)), 4):
+            # 컬럼 수로 구 형식(3개)/새 형식(4개) 자동 감지
+            # 헤더: 순위,테마명,거래대금 + 종목당 3개(구) 또는 4개(신)
+            remaining = len(row) - 3
+            step = 4 if remaining >= 20 else 3  # 5종목*4=20 이상이면 신형식
+            for i in range(3, min(3 + step * 5, len(row)), step):
                 name = row[i] if i < len(row) else ""
                 rate = row[i+1] if i+1 < len(row) else ""
                 vol = row[i+2] if i+2 < len(row) else ""
-                price = row[i+3] if i+3 < len(row) else "0"
+                price = row[i+3] if (step == 4 and i+3 < len(row)) else "0"
                 if name:
                     try:
                         rate_num = float(rate.replace("%", "").replace("+", ""))
@@ -509,9 +513,13 @@ def load_history(date_str):
                         price_int = int(str(price).replace(",", ""))
                     except ValueError:
                         price_int = 0
+                    try:
+                        amount_eok = float(vol.replace(",", "")) if vol else 0.0
+                    except ValueError:
+                        amount_eok = 0.0
                     stocks.append({
                         "name": name, "rate_num": rate_num,
-                        "amount_eok": float(vol.replace(",", "")) if vol else 0.0,
+                        "amount_eok": amount_eok,
                         "price": price_int,
                         "is_limit_up": rate_num >= 29.5,
                         "is_52w_high": False, "limit_up_time": None
