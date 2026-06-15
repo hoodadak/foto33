@@ -169,16 +169,20 @@ div[data-testid="column"] {
 /* date_input 너비 고정 */
 div[data-testid="stDateInput"] {
     width: 100% !important;
+    max-width: 160px !important;
 }
 div[data-testid="stDateInput"] input {
     font-size: 12px !important;
     padding: 4px !important;
+    min-width: 0 !important;
+    width: 100% !important;
 }
 /* 버튼 크기 축소 */
 div[data-testid="column"] button {
     font-size: 12px !important;
     padding: 4px 6px !important;
     white-space: nowrap !important;
+    min-width: 0 !important;
 }
 </style>
 """, unsafe_allow_html=True)
