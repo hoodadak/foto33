@@ -162,11 +162,9 @@ selected_date = st.date_input("날짜",
     max_value=date.today(),
     label_visibility="collapsed")
 
-col_empty, col_btn = st.columns([3, 1])
-with col_btn:
-    if st.button("🔄", use_container_width=True):
-        st.cache_data.clear()
-        st.rerun()
+if st.button("🔄 새로고침", use_container_width=True):
+    st.cache_data.clear()
+    st.rerun()
 
 # ===================== 데이터 로드 =====================
 is_today = (selected_date == date.today())
