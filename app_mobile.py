@@ -154,19 +154,19 @@ if is_market_open_now(now):
     st.markdown(f"<meta http-equiv='refresh' content='{CACHE_TTL}'>", unsafe_allow_html=True)
 
 # ===================== 헤더 + 날짜 + 새로고침 =====================
-col_logo, col_btn = st.columns([4, 1])
-with col_logo:
-    st.markdown('<div style="font-size:22px;font-weight:800;color:#1e293b;padding:6px 0;">주도테마</div>', unsafe_allow_html=True)
-with col_btn:
-    if st.button("🔄", use_container_width=True):
-        st.cache_data.clear()
-        st.rerun()
+st.markdown('<div style="font-size:22px;font-weight:800;color:#1e293b;padding:4px 2px 2px 2px;">주도테마</div>', unsafe_allow_html=True)
 
 selected_date = st.date_input("날짜",
     value=date.today(),
     min_value=date(2026, 1, 1),
     max_value=date.today(),
     label_visibility="collapsed")
+
+col_empty, col_btn = st.columns([3, 1])
+with col_btn:
+    if st.button("🔄", use_container_width=True):
+        st.cache_data.clear()
+        st.rerun()
 
 # ===================== 데이터 로드 =====================
 is_today = (selected_date == date.today())
