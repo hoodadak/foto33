@@ -1,16 +1,16 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import urllib.parse
-import requests
 import json
 import os
 from datetime import datetime, date, timedelta, timezone
+from utils import (
+    KST, HEADERS, CACHE_TTL, TOP_THEME_COUNT, THEME_SCAN_COUNT, STOCKS_PER_THEME,
+    ETF_ETN_PREFIXES, KR_MARKET_HOLIDAYS, is_market_open_now,
+    fetch_trading_top, fetch_top_rising_stock, fetch_theme_list, fetch_theme_detail,
+    fetch_limit_up_time, fetch_52week_high, build_theme_ranking_core, load_history
+)
 
-KST = timezone(timedelta(hours=9))
-now = datetime.now(KST)
-from bs4 import BeautifulSoup
-
-# gspread는 선택적 임포트 (없어도 실시간 기능은 동작)
 try:
     import gspread
     from google.oauth2.service_account import Credentials
@@ -21,501 +21,49 @@ except ImportError:
 # ===================== 기본 설정 =====================
 st.set_page_config(page_title="주도테마", layout="wide")
 
-now = datetime.now()
+now = datetime.now(KST)
 weekday_list = ['월', '화', '수', '목', '금', '토', '일']
 current_date_str = f"{now.strftime('%m-%d')}({weekday_list[now.weekday()]}) {now.strftime('%H:%M')}"
 
-HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-
-CACHE_TTL = 180  # 3분
-TOP_THEME_COUNT = 10
-THEME_SCAN_COUNT = 25
-STOCKS_PER_THEME = 5
-
-# ===================== Google Sheets 과거 데이터 조회 =====================
-@st.cache_data(ttl=3600)
-def load_history_from_sheet(date_str):
-    """Google Sheets에서 특정 날짜 데이터 불러오기"""
-    if not GSPREAD_AVAILABLE:
-        return None
-    try:
-        creds_json = os.environ.get("GOOGLE_CREDENTIALS", "")
-        sheet_id = os.environ.get("SHEET_ID", "")
-        if not creds_json or not sheet_id:
-            return None
-        creds_dict = json.loads(creds_json)
-        scopes = [
-            "https://spreadsheets.google.com/feeds",
-            "https://www.googleapis.com/auth/drive"
-        ]
-        creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
-        gc = gspread.authorize(creds)
-        wb = gc.open_by_key(sheet_id)
-        try:
-            ws = wb.worksheet(date_str)
-        except gspread.exceptions.WorksheetNotFound:
-            return None
-        rows = ws.get_all_values()
-        if len(rows) < 2:
-            return None
-        # 헤더 제외하고 테마 데이터 파싱
-        themes = []
-        for row in rows[1:]:
-            if not row or not row[0]:
-                continue
-            stocks = []
-            for i in range(3, min(18, len(row)), 3):
-                name = row[i] if i < len(row) else ""
-                rate = row[i+1] if i+1 < len(row) else ""
-                vol = row[i+2] if i+2 < len(row) else ""
-                if name:
-                    try:
-                        rate_num = float(rate.replace("%", "").replace("+", ""))
-                    except ValueError:
-                        rate_num = 0.0
-                    stocks.append({
-                        "name": name,
-                        "rate_num": rate_num,
-                        "amount_eok": float(vol.replace(",", "")) if vol else 0.0,
-                        "price": 0,
-                        "is_limit_up": rate_num >= 29.5,
-                        "is_52w_high": False,
-                        "limit_up_time": None
-                    })
-            try:
-                total_sum = float(row[2].replace(",", "")) if row[2] else 0.0
-            except ValueError:
-                total_sum = 0.0
-            themes.append({
-                "name": row[1] if len(row) > 1 else "",
-                "code": "",
-                "total_sum": total_sum,
-                "rising_sum": total_sum,
-                "has_limit_up": any(s["is_limit_up"] for s in stocks),
-                "has_52w_high": False,
-                "is_top_amount": len(themes) == 0,
-                "stocks": stocks
-            })
-        return themes
-    except Exception as e:
-        st.error(f"과거 데이터 불러오기 실패: {e}")
-        return None
-
-# 한국 증시 공휴일(휴장일) 목록 - 필요시 연도별로 추가/수정
-KR_MARKET_HOLIDAYS = {
-    # 2026년 예시 (실제 거래소 휴장일 캘린더에 맞춰 갱신 필요)
-    "2026-01-01",  # 신정
-    "2026-02-16", "2026-02-17", "2026-02-18",  # 설날 연휴
-    "2026-03-01",  # 삼일절
-    "2026-05-05",  # 어린이날
-    "2026-05-24",  # 부처님오신날
-    "2026-06-06",  # 현충일
-    "2026-08-15",  # 광복절
-    "2026-09-24", "2026-09-25", "2026-09-26",  # 추석 연휴
-    "2026-10-03",  # 개천절
-    "2026-10-09",  # 한글날
-    "2026-12-25",  # 성탄절
-    "2026-12-31",  # 연말 휴장(통상)
-}
-
-
-def is_market_open_now(dt):
-    """평일(월~금) 08:00~18:00, 공휴일 제외 시 True"""
-    if dt.weekday() >= 5:  # 5=토, 6=일
-        return False
-    if dt.strftime("%Y-%m-%d") in KR_MARKET_HOLIDAYS:
-        return False
-    hour_minute = dt.hour + dt.minute / 60
-    return 8 <= hour_minute < 18
-
-
-ETF_ETN_PREFIXES = (
-    "KODEX", "TIGER", "SOL", "ACE", "RISE", "PLUS", "KBSTAR", "HANARO",
-    "ARIRANG", "KOSEF", "TIMEFOLIO", "WOORI", "VITA", "FOCUS", "마이다스",
-    "삼성 인버스", "신한", "ETN", "ETF"
-)
-
-
-# ===================== 1. 거래상위(거래대금) 종목 수집 =====================
+# ===================== 캐시 래퍼 함수 =====================
 @st.cache_data(ttl=CACHE_TTL)
 def get_trading_top(market_n=1):
-    """sise_quant.naver 에서 거래대금 상위 종목 수집 (코스피/코스닥)"""
-    url = f"https://finance.naver.com/sise/sise_quant.naver?sosok={market_n}"
-    res = requests.get(url, headers=HEADERS, timeout=7)
-    res.encoding = "euc-kr"
-    soup = BeautifulSoup(res.text, "html.parser")
-
-    results = []
-    table = soup.select_one("table.type_2")
-    if not table:
-        return results
-
-    # 테이블 헤더 순서: N | 종목명 | 현재가 | 전일비 | 등락률 | 거래대금(백만) | 시가총액(억)
-    for tr in table.select("tr"):
-        tds = tr.select("td")
-        if len(tds) < 6:
-            continue
-        name_tag = tds[1].select_one("a")
-        if not name_tag:
-            continue
-        name = name_tag.text.strip()
-
-        # ETF/ETN 제외
-        if any(name.upper().startswith(p.upper()) or p in name for p in ETF_ETN_PREFIXES):
-            continue
-
-        rate_tag = tds[4].select_one("span")
-        rate_text = tds[4].text.strip().replace("%", "").replace(",", "")
-        try:
-            rate_num = float(rate_text)
-        except ValueError:
-            continue
-        # 상승 여부 (색상 클래스로 판별)
-        is_down = False
-        if rate_tag and "nv" in (rate_tag.get("class") or []):
-            is_down = True
-        if "-" in tds[4].text:
-            is_down = True
-        if is_down:
-            rate_num = -abs(rate_num)
-        else:
-            rate_num = abs(rate_num)
-
-        # 거래대금(백만원) -> 억원
-        amount_text = tds[5].text.strip().replace(",", "")
-        try:
-            amount_eok = float(amount_text) / 100.0
-        except ValueError:
-            amount_eok = 0.0
-
-        href = name_tag.get("href", "")
-        code = ""
-        if "code=" in href:
-            code = href.split("code=")[-1]
-
-        results.append({
-            "name": name,
-            "code": code,
-            "rate_num": rate_num,
-            "amount_eok": amount_eok
-        })
-
-    return results
-
+    return fetch_trading_top(market_n)
 
 @st.cache_data(ttl=CACHE_TTL)
 def get_top_rising_stock():
-    """코스피+코스닥 통합, 상승종목 중 거래대금 1위 종목 반환"""
-    all_stocks = get_trading_top(0) + get_trading_top(1)
-    rising = [s for s in all_stocks if s["rate_num"] > 0]
-    rising.sort(key=lambda x: x["amount_eok"], reverse=True)
-    return rising[0] if rising else None
+    return fetch_top_rising_stock()
 
-
-# ===================== 2. 테마별 시세 목록 수집 =====================
 @st.cache_data(ttl=CACHE_TTL)
 def get_theme_list(page=1):
-    """theme.naver 에서 테마 목록(이름, 코드, 주도주 목록) 수집
+    return fetch_theme_list(page)
 
-    각 행에는 테마명 외에 "주도주" 컬럼이 있으며, 보통 2개의 종목명
-    (상승 주도주 / 하락 주도주)이 링크 형태로 들어있음.
-    """
-    url = f"https://finance.naver.com/sise/theme.naver?page={page}"
-    res = requests.get(url, headers=HEADERS, timeout=7)
-    res.encoding = "euc-kr"
-    soup = BeautifulSoup(res.text, "html.parser")
-
-    themes = []
-    table = soup.select_one("table.type_1")
-    if not table:
-        return themes
-
-    for tr in table.select("tr"):
-        tds = tr.select("td")
-        if len(tds) < 4:
-            continue
-        link = tr.select_one("td.col_type1 a")
-        if not link:
-            continue
-        theme_name = link.text.strip()
-        href = link.get("href", "")
-        theme_code = ""
-        if "no=" in href:
-            theme_code = href.split("no=")[-1].split("&")[0]
-
-        # 주도주: 행 내의 모든 종목 링크(item/main.naver?code=...) 중
-        # 테마명 링크(sise_group_detail) 이외의 것들을 주도주로 간주
-        leading_stocks = []
-        for a in tr.select("a"):
-            a_href = a.get("href", "")
-            if "item/main.naver" in a_href:
-                stock_name = a.text.strip()
-                if stock_name:
-                    leading_stocks.append(stock_name)
-
-        themes.append({"name": theme_name, "code": theme_code, "leading_stocks": leading_stocks})
-
-    return themes
-
-
-# ===================== 3. 테마 상세(종목 리스트) 수집 =====================
 @st.cache_data(ttl=CACHE_TTL)
 def get_theme_detail(theme_code, limit=STOCKS_PER_THEME):
-    """sise_group_detail.naver?type=theme&no=코드 에서 종목 리스트(이름, 코드, 등락률, 거래대금) 수집
+    return fetch_theme_detail(theme_code, limit)
 
-    실제 데이터 행 구조 (총 11개 td, 화면 캡처로 확인됨):
-      [0] 종목명(링크)
-      [1] 테마 편입 사유(숨김 텍스트)
-      [2] 현재가
-      [3] 전일비 (상한가/상승/하락 표시 포함)
-      [4] 등락률 (예: '+30.00%', '-1.23%')
-      [5] 매수호가
-      [6] 매도호가
-      [7] 거래량 (주식수)
-      [8] 거래대금 (당일, 백만원 단위)  <- 사용
-      [9] 전일거래량
-      [10] (빈 칸)
-    """
-    url = f"https://finance.naver.com/sise/sise_group_detail.naver?type=theme&no={theme_code}"
-    res = requests.get(url, headers=HEADERS, timeout=7)
-    res.encoding = "euc-kr"
-    soup = BeautifulSoup(res.text, "html.parser")
-
-    stocks = []
-    table = soup.select_one("table.type_5")
-    if not table:
-        return stocks
-
-    for tr in table.select("tr"):
-        tds = tr.select("td")
-        if len(tds) < 10:
-            continue
-
-        name_tag = tds[0].select_one("a")
-        if not name_tag:
-            continue
-        name = name_tag.text.strip()
-        href = name_tag.get("href", "")
-        code = ""
-        if "code=" in href:
-            code = href.split("code=")[-1]
-
-        price_text = tds[2].text.strip().replace(",", "")
-        try:
-            price = int(price_text)
-        except ValueError:
-            price = 0
-
-        # 등락률: "+30.00%", "-1.23%" 형태
-        rate_text = tds[4].text.strip().replace("%", "").replace(",", "")
-        is_down = "-" in rate_text
-        rate_text = rate_text.replace("+", "").replace("-", "")
-        try:
-            rate_num = float(rate_text)
-        except ValueError:
-            rate_num = 0.0
-        if is_down:
-            rate_num = -rate_num
-
-        # 상한가 여부: 전일비 셀에 "상한가" 텍스트 포함
-        is_limit_up_flag = "상한가" in tds[3].text
-
-        # 거래대금(백만원) -> 억원 (당일 거래대금 = td[8])
-        amount_text = tds[8].text.strip().replace(",", "")
-        try:
-            amount_eok = float(amount_text) / 100.0
-        except ValueError:
-            amount_eok = 0.0
-
-        stocks.append({
-            "name": name,
-            "code": code,
-            "price": price,
-            "rate_num": rate_num,
-            "amount_eok": amount_eok,
-            "is_limit_up": is_limit_up_flag
-        })
-
-        if len(stocks) >= limit:
-            break
-
-    return stocks
-
-
-# ===================== 3-1. 상한가 종목의 체결시각(상한가 도달 시각) 조회 =====================
 @st.cache_data(ttl=CACHE_TTL)
 def get_limit_up_time(ticker):
-    """종목 상세페이지에서 현재가 옆 체결시각을 가져옴 (상한가 도달 추정 시각)"""
-    try:
-        url = f"https://finance.naver.com/item/main.naver?code={ticker}"
-        res = requests.get(url, headers=HEADERS, timeout=5)
-        res.encoding = "euc-kr"
-        soup = BeautifulSoup(res.text, "html.parser")
+    return fetch_limit_up_time(ticker)
 
-        time_tag = soup.select_one("#time")
-        if time_tag:
-            return time_tag.text.strip()  # 예: "15:30"
-    except Exception:
-        pass
-    return None
-
-
-# ===================== 3-2. 52주 최고가 조회 (52주 신고가 판별용) =====================
 @st.cache_data(ttl=CACHE_TTL)
 def get_52week_high(ticker):
-    """네이버 모바일 증권 API에서 52주 최고가를 가져옴"""
-    try:
-        url = f"https://m.stock.naver.com/api/stock/{ticker}/integration"
-        res = requests.get(url, headers=HEADERS, timeout=5)
-        data = res.json()
+    return fetch_52week_high(ticker)
 
-        # totalInfos 등 여러 섹션에 code/key/value 형태의 항목들이 있음
-        def search(obj):
-            if isinstance(obj, dict):
-                if obj.get("code") == "highPriceOf52Weeks":
-                    val = obj.get("value", "").replace(",", "")
-                    try:
-                        return int(val)
-                    except ValueError:
-                        return None
-                for v in obj.values():
-                    result = search(v)
-                    if result is not None:
-                        return result
-            elif isinstance(obj, list):
-                for item in obj:
-                    result = search(item)
-                    if result is not None:
-                        return result
-            return None
-
-        return search(data)
-    except Exception:
-        return None
-
-
-# ===================== 4. 테마 선정 로직 =====================
 @st.cache_data(ttl=CACHE_TTL)
 def build_theme_ranking():
-    # 거래대금 1위 상승종목
-    top_stock = get_top_rising_stock()
+    return build_theme_ranking_core(
+        get_trading_top, get_top_rising_stock,
+        get_theme_list, get_theme_detail,
+        get_limit_up_time, get_52week_high
+    )
 
-    # 스캔할 테마 목록 수집 (1~2페이지)
-    theme_pool = get_theme_list(1) + get_theme_list(2)
-    theme_pool = theme_pool[:THEME_SCAN_COUNT]
-
-    # 테마 상세는 테마당 1회만 호출 (결과 재사용)
-    theme_results = []
-    selected_theme_code = None
-
-    for theme in theme_pool:
-        detail = get_theme_detail(theme["code"])
-        if not detail:
-            continue
-
-        # top_stock이 이 테마에 포함되는지 확인 (아직 선정 안 됐을 때만)
-        if top_stock and selected_theme_code is None:
-            for st_item in detail:
-                if st_item["name"] == top_stock["name"] or st_item["code"] == top_stock["code"]:
-                    selected_theme_code = theme["code"]
-                    break
-
-        rising_sum = sum(s["amount_eok"] for s in detail if s["rate_num"] > 0)
-        total_sum = sum(s["amount_eok"] for s in detail)
-
-        # 상한가 종목들의 도달 시각 조회 (상한가 종목만 추가 호출)
-        for s in detail:
-            if s.get("is_limit_up") and s.get("code"):
-                s["limit_up_time"] = get_limit_up_time(s["code"])
-            else:
-                s["limit_up_time"] = None
-
-        # 상한가 종목을 도달 시각 오름차순(빠른 순)으로 맨 앞에 배치, 나머지는 기존 순서 유지
-        limit_up_stocks = [s for s in detail if s.get("is_limit_up")]
-        other_stocks = [s for s in detail if not s.get("is_limit_up")]
-        limit_up_stocks.sort(key=lambda s: s.get("limit_up_time") or "99:99")
-        detail = limit_up_stocks + other_stocks
-
-        theme_results.append({
-            "name": theme["name"],
-            "code": theme["code"],
-            "rising_sum": rising_sum,
-            "total_sum": total_sum,
-            "has_limit_up": len(limit_up_stocks) > 0,
-            "stocks": detail
-        })
-
-    # rising_sum 내림차순 정렬
-    theme_results.sort(key=lambda t: t["rising_sum"], reverse=True)
-
-    # 1위 테마를 맨 앞으로 이동
-    if selected_theme_code:
-        for i, t in enumerate(theme_results):
-            if t["code"] == selected_theme_code:
-                top_theme = theme_results.pop(i)
-                theme_results.insert(0, top_theme)
-                break
-
-    theme_results = theme_results[:TOP_THEME_COUNT]
-
-    # ===== 대표주(주도주) 중복 필터링 =====
-    # 전체 테마 풀에서 "종목명 -> 그 종목이 주도주인 테마 코드 집합" 맵 구축
-    leading_stock_to_themes = {}
-    for theme in theme_pool:
-        for stock_name in theme.get("leading_stocks", []):
-            leading_stock_to_themes.setdefault(stock_name, set()).add(theme["code"])
-
-    for t in theme_results:
-        stocks = t["stocks"]
-        if not stocks:
-            continue
-
-        # 현재 테마(t) 내 등락률 1위 종목명 확인
-        top_rate_stock_name = max(stocks, key=lambda s: s["rate_num"])["name"]
-
-        filtered = []
-        for s in stocks:
-            owner_themes = leading_stock_to_themes.get(s["name"], set())
-            # 이 종목이 "다른 테마"의 주도주이고, 현재 테마(t)의 주도주는 아니며,
-            # 현재 테마 내 등락률 1위도 아니라면 제외
-            is_leading_elsewhere = bool(owner_themes - {t["code"]})
-            is_leading_here = t["code"] in owner_themes
-            if is_leading_elsewhere and not is_leading_here and s["name"] != top_rate_stock_name:
-                continue
-            filtered.append(s)
-
-        t["stocks"] = filtered
-
-        # 52주 신고가 여부 (현재가 >= 52주 최고가)
-        for s in filtered:
-            s["is_52w_high"] = False
-            if s.get("code"):
-                high = get_52week_high(s["code"])
-                if high and s["price"] >= high:
-                    s["is_52w_high"] = True
-
-        # 통계 재계산
-        t["rising_sum"] = sum(s["amount_eok"] for s in filtered if s["rate_num"] > 0)
-        t["total_sum"] = sum(s["amount_eok"] for s in filtered)
-        t["has_limit_up"] = any(s.get("is_limit_up") for s in filtered)
-        t["has_52w_high"] = any(s.get("is_52w_high") for s in filtered)
-
-    # 거래대금(total_sum) 1위 테마 표시
-    if theme_results:
-        top_amount_theme = max(theme_results, key=lambda t: t["total_sum"])
-        for t in theme_results:
-            t["is_top_amount"] = (t["code"] == top_amount_theme["code"])
-
-    # 최종 순서: total_sum(거래대금) 내림차순. 단, selected_theme_code(1위 테마)는 맨 앞 고정
-    if selected_theme_code:
-        pinned = [t for t in theme_results if t["code"] == selected_theme_code]
-        others = [t for t in theme_results if t["code"] != selected_theme_code]
-        others.sort(key=lambda t: t["total_sum"], reverse=True)
-        theme_results = pinned + others
-    else:
-        theme_results.sort(key=lambda t: t["total_sum"], reverse=True)
-
-    return theme_results
+@st.cache_data(ttl=3600)
+def load_history_from_sheet(date_str):
+    result = load_history(date_str)
+    if result is None and GSPREAD_AVAILABLE:
+        st.error("과거 데이터 불러오기 실패")
+    return result
 
 
 # ===================== CSS =====================
