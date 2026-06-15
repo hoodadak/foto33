@@ -162,28 +162,17 @@ div[data-testid="column"] { min-width: 0 !important; }
 """, unsafe_allow_html=True)
 
 # ===================== 헤더: 주도테마 + 날짜 + 새로고침 =====================
-st.markdown("""
-<style>
-div[data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 0.2rem !important; }
-div[data-testid="column"] { min-width: 0 !important; flex: 1 !important; padding: 0 !important; }
-div[data-testid="stDateInput"] input {
-    font-size: 11px !important;
-    padding: 2px 4px !important;
-    min-width: 0 !important;
-    width: 100% !important;
-}
-</style>
-""", unsafe_allow_html=True)
+# 날짜/새로고침을 테마카드와 동일한 2열 grid로 배치
+st.markdown('<div style="font-size:22px;font-weight:800;color:#1e293b;padding:4px 2px 4px 2px;">주도테마</div>', unsafe_allow_html=True)
 
-st.markdown('<div style="font-size:22px;font-weight:800;color:#1e293b;padding:4px 2px 2px 2px;">주도테마</div>', unsafe_allow_html=True)
-
-col_d, col_r, col_empty = st.columns([3, 1, 2])
+col_d, col_r = st.columns(2)
 with col_d:
     selected_date = st.date_input("날짜", value=date.today(),
                                    min_value=date(2026, 1, 1), max_value=date.today(),
-                                   label_visibility="collapsed")
+                                   label_visibility="collapsed",
+                                   key="date_sel")
 with col_r:
-    if st.button("🔄", use_container_width=True):
+    if st.button("🔄 새로고침", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
 
