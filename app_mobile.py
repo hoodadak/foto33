@@ -169,20 +169,22 @@ if params.get("refresh") == "1":
     st.query_params["refresh"] = "0"
     st.rerun()
 
-# 헤더 HTML (주도테마 + 날짜선택 + 새로고침 한 줄)
-st.markdown(f"""
-<div style="display:flex; justify-content:space-between; align-items:center; padding:4px 2px; margin-bottom:6px;">
+today_str = date.today().strftime("%Y-%m-%d")
+
+# 헤더 HTML - components.html로 window.parent 사용
+components.html(f"""
+<div style="display:flex; justify-content:space-between; align-items:center; padding:4px 2px; margin-bottom:6px; font-family:sans-serif;">
     <div style="font-size:22px; font-weight:800; color:#1e293b;">주도테마</div>
     <div style="display:flex; align-items:center; gap:6px;">
         <input type="date" id="date-picker" value="{selected_date_str}"
-            min="2026-01-01" max="{date.today().strftime('%Y-%m-%d')}"
+            min="2026-01-01" max="{today_str}"
             style="font-size:13px; padding:4px 6px; border-radius:6px; border:1px solid #ccc; background:#1e293b; color:white;"
-            onchange="window.location.href='?d='+this.value">
-        <button onclick="window.location.href='?d={selected_date_str}&refresh=1'"
+            onchange="window.parent.location.href='?d='+this.value">
+        <button onclick="window.parent.location.href='?d={selected_date_str}&refresh=1'"
             style="font-size:16px; padding:4px 10px; border-radius:6px; border:none; background:#1e293b; color:white; cursor:pointer;">🔄</button>
     </div>
 </div>
-""", unsafe_allow_html=True)
+""", height=55)
 
 # ===================== 데이터 로드 =====================
 is_today = (selected_date == date.today())
