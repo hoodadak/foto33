@@ -60,9 +60,9 @@ def build_theme_ranking():
 
 @st.cache_data(ttl=3600)
 def load_history_from_sheet(date_str):
-    result = load_history(date_str)
-    if result is None and GSPREAD_AVAILABLE:
-        st.error("과거 데이터 불러오기 실패")
+    result, err = load_history(date_str)
+    if err:
+        st.error(f"과거 데이터 불러오기 실패: {err}")
     return result
 
 

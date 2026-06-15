@@ -463,12 +463,14 @@ def load_history(date_str):
         import gspread
         from google.oauth2.service_account import Credentials
     except ImportError:
-        return None
+        return None, "gspread 미설치"
     try:
         creds_json = os.environ.get("GOOGLE_CREDENTIALS", "")
         sheet_id = os.environ.get("SHEET_ID", "")
-        if not creds_json or not sheet_id:
-            return None
+        if not creds_json:
+            return None, "GOOGLE_CREDENTIALS 환경변수 없음"
+        if not sheet_id:
+            return None, "SHEET_ID 환경변수 없음"
         creds_dict = json.loads(creds_json)
         scopes = [
             "https://spreadsheets.google.com/feeds",
@@ -480,10 +482,10 @@ def load_history(date_str):
         try:
             ws = wb.worksheet(date_str)
         except gspread.exceptions.WorksheetNotFound:
-            return None
+            return None, f"{date_str} 시트 없음"
         rows = ws.get_all_values()
         if len(rows) < 2:
-            return None
+            return None, f"{date_str} 시트 데이터 없음"
         themes = []
         for row in rows[1:]:
             if not row or not row[0]:
@@ -515,6 +517,6 @@ def load_history(date_str):
                 "has_52w_high": False, "is_top_amount": len(themes) == 0,
                 "stocks": stocks
             })
-        return themes
-    except Exception:
-        return None
+        return themes, None
+    except Exception as e:
+        return None, str(e)
