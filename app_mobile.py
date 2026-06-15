@@ -67,12 +67,19 @@ st.markdown("""
     padding-right: 0.5rem !important; 
     padding-top: 0rem !important;
     max-width: 100% !important;
+    width: 100% !important;
 }
 [data-testid="stHeader"] { display: none !important; }
+[data-testid="stAppViewContainer"] { padding: 0 !important; }
+[data-testid="stAppViewContainer"] > section { padding: 0 !important; width: 100% !important; }
 [data-testid="stAppViewContainer"] > section > div { 
-    padding-left: 0 !important; 
-    padding-right: 0 !important; 
+    padding-left: 0.5rem !important; 
+    padding-right: 0.5rem !important;
+    max-width: 100% !important;
+    width: 100% !important;
 }
+/* 전체 앱 너비 100% */
+.main > div { max-width: 100% !important; width: 100% !important; }
 
 /* 컬럼 가로배치 강제 */
 div[data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 0.2rem !important; }
@@ -159,12 +166,18 @@ st.markdown("""
 <style>
 div[data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 0.2rem !important; }
 div[data-testid="column"] { min-width: 0 !important; flex: 1 !important; padding: 0 !important; }
+div[data-testid="stDateInput"] input {
+    font-size: 11px !important;
+    padding: 2px 4px !important;
+    min-width: 0 !important;
+    width: 100% !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
 st.markdown('<div style="font-size:22px;font-weight:800;color:#1e293b;padding:4px 2px 2px 2px;">주도테마</div>', unsafe_allow_html=True)
 
-col_d, col_r, col_empty = st.columns([2, 1, 3])
+col_d, col_r, col_empty = st.columns([3, 1, 2])
 with col_d:
     selected_date = st.date_input("날짜", value=date.today(),
                                    min_value=date(2026, 1, 1), max_value=date.today(),
