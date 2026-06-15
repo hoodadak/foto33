@@ -155,55 +155,58 @@ div[data-testid="column"] { min-width: 0 !important; }
 """, unsafe_allow_html=True)
 
 # ===================== 헤더: 주도테마 + 날짜 + 새로고침 =====================
-st.markdown("""
+# URL 파라미터에서 날짜 읽기
+params = st.query_params
+selected_date_str = params.get("d", date.today().strftime("%Y-%m-%d"))
+try:
+    selected_date = date.fromisoformat(selected_date_str)
+    if selected_date > date.today():
+        selected_date = date.today()
+except Exception:
+    selected_date = date.today()
+    selected_date_str = selected_date.strftime("%Y-%m-%d")
+
+# 새로고침 파라미터 처리
+if params.get("refresh") == "1":
+    st.cache_data.clear()
+    st.query_params["refresh"] = "0"
+    st.rerun()
+
+today_str = date.today().strftime("%Y-%m-%d")
+
+# 헤더: 주도테마 + 날짜 + 새로고침 (순수 HTML, st.columns 없음)
+components.html(f"""
 <style>
-/* 날짜/버튼 컬럼 강제 가로배치 */
-div[data-testid="stHorizontalBlock"] {
-    flex-wrap: nowrap !important;
-    overflow: hidden !important;
-}
-div[data-testid="column"] {
-    min-width: 0 !important;
-    flex-shrink: 1 !important;
-}
-/* date_input 너비 고정 */
-div[data-testid="stDateInput"] {
-    width: 100% !important;
-    max-width: 160px !important;
-}
-div[data-testid="stDateInput"] input {
-    font-size: 12px !important;
-    padding: 4px !important;
-    min-width: 0 !important;
-    width: 100% !important;
-}
-/* 버튼 크기 축소 */
-div[data-testid="column"] button {
-    font-size: 12px !important;
-    padding: 4px 6px !important;
-    white-space: nowrap !important;
-    min-width: 0 !important;
-}
+  .header-wrap {{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 2px;
+    font-family: sans-serif;
+  }}
+  .logo {{ font-size: 22px; font-weight: 800; color: #1e293b; }}
+  .btn-wrap {{ display: flex; align-items: center; gap: 6px; }}
+  input[type=date] {{
+    font-size: 13px; padding: 4px 6px;
+    border-radius: 6px; border: 1px solid #ccc;
+    background: #1e293b; color: white;
+  }}
+  button {{
+    font-size: 16px; padding: 4px 10px;
+    border-radius: 6px; border: none;
+    background: #1e293b; color: white; cursor: pointer;
+  }}
 </style>
-""", unsafe_allow_html=True)
-
-# 주도테마 로고
-st.markdown('<div style="font-size:22px;font-weight:800;color:#1e293b;padding:4px 0 4px 0;">주도테마</div>', unsafe_allow_html=True)
-
-# 날짜 + 새로고침 한 줄
-col_d, col_r = st.columns([1, 1])
-with col_d:
-    selected_date = st.date_input(
-        "날짜",
-        value=date.today(),
-        min_value=date(2026, 1, 1),
-        max_value=date.today(),
-        label_visibility="collapsed"
-    )
-with col_r:
-    if st.button("🔄 새로고침", use_container_width=True):
-        st.cache_data.clear()
-        st.rerun()
+<div class="header-wrap">
+  <div class="logo">주도테마</div>
+  <div class="btn-wrap">
+    <input type="date" value="{selected_date_str}"
+      min="2026-01-01" max="{today_str}"
+      onchange="window.parent.location.href='?d='+this.value">
+    <button onclick="window.parent.location.href='?d={selected_date_str}&refresh=1'">🔄</button>
+  </div>
+</div>
+""", height=55)
 
 # ===================== 데이터 로드 =====================
 is_today = (selected_date == date.today())
