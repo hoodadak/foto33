@@ -186,12 +186,22 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # 히든 입력값 처리
-date_val = st.text_input("날짜값", value=selected_date_state, key="date_val", label_visibility="hidden")
+st.markdown('<div style="display:none">', unsafe_allow_html=True)
+date_val = st.text_input("날짜값", value=selected_date_state, key="date_val")
+st.markdown('</div>', unsafe_allow_html=True)
+# 히든 버튼으로 날짜/새로고침 처리
 col_h1, col_h2 = st.columns(2)
 with col_h1:
-    date_submit = st.button("날짜적용", key="date_submit", label_visibility="hidden" if hasattr(st.button, 'label_visibility') else None)
+    date_submit = st.button("날짜적용", key="date_submit")
 with col_h2:
-    refresh_hidden = st.button("새로고침실행", key="refresh_btn_hidden", label_visibility="hidden" if hasattr(st.button, 'label_visibility') else None)
+    refresh_hidden = st.button("새로고침실행", key="refresh_btn_hidden")
+
+# 히든 버튼 숨기기
+st.markdown("""
+<style>
+button[kind="secondary"] { display: none !important; }
+</style>
+""", unsafe_allow_html=True)
 
 if date_submit and date_val:
     st.session_state["selected_date"] = date_val
