@@ -187,7 +187,7 @@ div[data-testid="column"] button {
 st.markdown('<div style="font-size:22px;font-weight:800;color:#1e293b;padding:4px 0 4px 0;">주도테마</div>', unsafe_allow_html=True)
 
 # 날짜 + 새로고침 한 줄
-col_d, col_r = st.columns([3, 1])
+col_d, col_r = st.columns([2, 1])
 with col_d:
     selected_date = st.date_input(
         "날짜",
