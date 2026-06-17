@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import requests
 from datetime import datetime
 from bs4 import BeautifulSoup
@@ -15,6 +16,20 @@ ETF_ETN_PREFIXES = (
     "ARIRANG", "KOSEF", "TIMEFOLIO", "WOORI", "VITA", "FOCUS", "마이다스",
     "삼성 인버스", "신한", "ETN", "ETF"
 )
+
+# ===================== 재시도 로직이 있는 요청 함수 =====================
+def safe_get(url, max_retries=3, timeout=15):
+    """네트워크 타임아웃/오류 시 최대 max_retries번 재시도"""
+    last_err = None
+    for attempt in range(max_retries):
+        try:
+            res = requests.get(url, headers=HEADERS, timeout=timeout)
+            return res
+        except requests.exceptions.RequestException as e:
+            last_err = e
+            if attempt < max_retries - 1:
+                time.sleep(3)  # 재시도 전 3초 대기
+    raise last_err
 
 # ===================== Google Sheets 연결 =====================
 def connect_sheet():
@@ -32,7 +47,7 @@ def connect_sheet():
 # ===================== 데이터 수집 =====================
 def get_trading_top(market_n):
     url = f"https://finance.naver.com/sise/sise_quant.naver?sosok={market_n}"
-    res = requests.get(url, headers=HEADERS, timeout=7)
+    res = safe_get(url)
     res.encoding = "euc-kr"
     soup = BeautifulSoup(res.text, "html.parser")
     results = []
@@ -76,7 +91,7 @@ def get_top_rising_stock():
 
 def get_theme_list(page=1):
     url = f"https://finance.naver.com/sise/theme.naver?page={page}"
-    res = requests.get(url, headers=HEADERS, timeout=7)
+    res = safe_get(url)
     res.encoding = "euc-kr"
     soup = BeautifulSoup(res.text, "html.parser")
     themes = []
@@ -99,7 +114,7 @@ def get_theme_list(page=1):
 
 def get_theme_detail(theme_code):
     url = f"https://finance.naver.com/sise/sise_group_detail.naver?type=theme&no={theme_code}"
-    res = requests.get(url, headers=HEADERS, timeout=7)
+    res = safe_get(url)
     res.encoding = "euc-kr"
     soup = BeautifulSoup(res.text, "html.parser")
     stocks = []
@@ -190,18 +205,21 @@ def main():
     except gspread.exceptions.WorksheetNotFound:
         ws = wb.add_worksheet(title=today, rows=100, cols=20)
 
-    # 헤더
-    ws.append_row(["순위", "테마명", "거래대금(억)", "종목1", "등락1", "거래대금1",
-                   "종목2", "등락2", "거래대금2", "종목3", "등락3", "거래대금3",
-                   "종목4", "등락4", "거래대금4", "종목5", "등락5", "거래대금5"])
+    # 헤더 (종목당 4개: 종목명, 등락률, 거래대금, 현재가)
+    ws.append_row(["순위", "테마명", "거래대금(억)",
+                   "종목1", "등락1", "거래대금1", "현재가1",
+                   "종목2", "등락2", "거래대금2", "현재가2",
+                   "종목3", "등락3", "거래대금3", "현재가3",
+                   "종목4", "등락4", "거래대금4", "현재가4",
+                   "종목5", "등락5", "거래대금5", "현재가5"])
 
     # 데이터 행
     for rank, theme in enumerate(top10, 1):
         row = [rank, theme["name"], f"{theme['total_sum']:,.0f}"]
         for s in theme["stocks"]:
-            row += [s["name"], f"{s['rate_num']:.2f}%", f"{s['amount_eok']:,.0f}"]
+            row += [s["name"], f"{s['rate_num']:.2f}%", f"{s['amount_eok']:,.0f}", s["price"]]
         # 종목이 5개 미만이면 빈칸 채우기
-        while len(row) < 18:
+        while len(row) < 23:
             row.append("")
         ws.append_row(row)
 
