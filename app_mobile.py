@@ -8,7 +8,8 @@ from utils import (
     KST, HEADERS, CACHE_TTL, TOP_THEME_COUNT, THEME_SCAN_COUNT, STOCKS_PER_THEME,
     is_market_open_now,
     fetch_trading_top, fetch_top_rising_stock, fetch_theme_list, fetch_theme_detail,
-    fetch_limit_up_time, fetch_52week_high, build_theme_ranking_core, load_history
+    fetch_limit_up_time, fetch_52week_high, fetch_market_top100_codes, fetch_kijun_monthly,
+    build_theme_ranking_core, load_history
 )
 
 # ===================== 기본 설정 =====================
@@ -42,11 +43,21 @@ def get_52week_high(ticker):
     return fetch_52week_high(ticker)
 
 @st.cache_data(ttl=CACHE_TTL)
+def get_top100_codes():
+    return fetch_market_top100_codes()
+
+@st.cache_data(ttl=3600)
+def get_kijun(ticker):
+    return fetch_kijun_monthly(ticker)
+
+@st.cache_data(ttl=CACHE_TTL)
 def build_theme_ranking():
     return build_theme_ranking_core(
         get_trading_top, get_top_rising_stock,
         get_theme_list, get_theme_detail,
-        get_limit_up_time, get_52week_high
+        get_limit_up_time, get_52week_high,
+        get_top100_codes,
+        get_kijun
     )
 
 @st.cache_data(ttl=3600)
@@ -203,6 +214,8 @@ def make_card_html(theme):
         icons += '⭐'
     if theme.get("has_limit_up"):
         icons += '<span style="color:#dc2626;font-weight:900;">⬆</span>'
+    if theme.get("kijun_below"):
+        icons += '<span title="1위 종목 월봉 기준선 아래">📉</span>'
 
     total_sum_str = f"KRX {theme['total_sum']:,.0f}억"
     stocks_html = ""
