@@ -231,7 +231,12 @@ results   = st.session_state.get("scanner_results")
 done_time = st.session_state.get("scanner_done_time")
 
 if results is None:
-    st.info("'스캔 시작' 버튼을 눌러 조건에 맞는 종목을 검색하세요.")
+    st.markdown(
+        '<div style="background:#fef9c3; color:#000000; border-radius:8px; '
+        'padding:12px 16px; font-size:14px;">'
+        '\'스캔 시작\' 버튼을 눌러 조건에 맞는 종목을 검색하세요.</div>',
+        unsafe_allow_html=True
+    )
     st.stop()
 
 if not results:
