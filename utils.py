@@ -344,7 +344,7 @@ def fetch_limit_up_time(ticker):
     return None
 
 
-def fetch_kijun_monthly(ticker: str) -> dict | None:
+def fetch_kijun_monthly(ticker: str):
     """
     월봉 일목균형표 기준선 계산.
     기준선 = (최근 26개월 고가 + 최근 26개월 저가) / 2
@@ -374,7 +374,7 @@ def fetch_kijun_monthly(ticker: str) -> dict | None:
         return None
 
 
-def scan_kijun_breakout_all(progress_callback=None) -> list:
+def scan_kijun_breakout_all(progress_callback=None):
     """
     상장 전체 종목(코스피+코스닥)에서 월봉 기준선 돌파 조건 스캔.
 
