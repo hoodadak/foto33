@@ -150,54 +150,6 @@ def is_market_open_now(dt):
     return 8 <= h < 18
 
 
-def fetch_market_top100_codes() -> set:
-    """
-    네이버 증권 거래량 상위 페이지(코스피+코스닥)에서
-    거래대금 상위 100 종목의 종목코드 set 반환.
-    pykrx 없이 네이버 스크래핑으로 동작.
-    """
-    top100 = set()
-    try:
-        all_stocks = []
-        for market_n in [0, 1]:  # 0=코스피, 1=코스닥
-            for page in range(1, 6):  # 페이지당 ~20종목, 5페이지 = ~100종목
-                url = f"https://finance.naver.com/sise/sise_quant.naver?sosok={market_n}&page={page}"
-                res = requests.get(url, headers=HEADERS, timeout=7)
-                res.encoding = "euc-kr"
-                soup = BeautifulSoup(res.text, "html.parser")
-                table = soup.select_one("table.type_2")
-                if not table:
-                    break
-                rows = table.select("tr")
-                found = 0
-                for tr in rows:
-                    tds = tr.select("td")
-                    if len(tds) < 6:
-                        continue
-                    name_tag = tds[1].select_one("a")
-                    if not name_tag:
-                        continue
-                    href = name_tag.get("href", "")
-                    code = href.split("code=")[-1] if "code=" in href else ""
-                    amount_text = tds[5].text.strip().replace(",", "")
-                    try:
-                        amount_eok = float(amount_text) / 100.0
-                    except ValueError:
-                        amount_eok = 0.0
-                    if code:
-                        all_stocks.append({"code": code, "amount_eok": amount_eok})
-                        found += 1
-                if found == 0:
-                    break
-
-        # 거래대금 기준 정렬 후 상위 100개 코드 추출
-        all_stocks.sort(key=lambda x: x["amount_eok"], reverse=True)
-        top100 = {s["code"] for s in all_stocks[:100]}
-    except Exception:
-        pass
-    return top100
-
-
 def fetch_trading_top(market_n=1):
     url = f"https://finance.naver.com/sise/sise_quant.naver?sosok={market_n}"
     res = requests.get(url, headers=HEADERS, timeout=7)
@@ -344,203 +296,6 @@ def fetch_limit_up_time(ticker):
     return None
 
 
-def fetch_kijun_monthly(ticker: str):
-    """
-    월봉 일목균형표 기준선 계산.
-    기준선 = (최근 26개월 고가 + 최근 26개월 저가) / 2
-    Returns: {"kijun": float, "current_price": int, "is_above": bool} or None
-    """
-    try:
-        from pykrx import stock as krx
-        from datetime import datetime, timedelta
-
-        end = datetime.today()
-        start = end - timedelta(days=31 * 32)   # 32개월치 여유
-        df = krx.get_market_ohlcv(
-            start.strftime("%Y%m%d"), end.strftime("%Y%m%d"),
-            ticker, freq="m"
-        )
-        if df is None or len(df) < 26:
-            return None
-        recent_26 = df.tail(26)
-        kijun = (recent_26["고가"].max() + recent_26["저가"].min()) / 2
-        current_price = int(df["종가"].iloc[-1])
-        return {
-            "kijun": round(kijun, 0),
-            "current_price": current_price,
-            "is_above": current_price >= kijun,
-        }
-    except Exception:
-        return None
-
-
-def scan_kijun_breakout_all(progress_callback=None):
-    """
-    상장 전체 종목(코스피+코스닥)에서 월봉 기준선 돌파 조건 스캔.
-
-    조건:
-      - 최근 12개월 이내에 기준선을 하→위로 돌파한 양봉 존재
-      - 돌파 양봉 단독 상승률 ≥ 50%  →  합격
-      - 돌파 양봉 상승률 < 50% 이더라도
-        다음달 양봉 존재 & 두 달 단순합산 상승률 ≥ 50%  →  합격 (두 달을 하나로 취급)
-
-    등급 (합산 기준 상승률):
-      A: ≥ 100%   B: ≥ 70%   C: ≥ 50%
-
-    우선 표시: 돌파 양봉 종가 == 52주 고가 (is_priority=True)
-
-    Returns: list of dict, 등급+우선순위 기준 정렬
-    """
-    try:
-        from pykrx import stock as krx
-        from datetime import datetime, timedelta
-    except ImportError:
-        return []
-
-    today = datetime.today()
-    # 월봉 데이터: 26개월(기준선) + 12개월(탐지 윈도우) + 1개월(전월 확인) = 40개월 여유
-    start = today - timedelta(days=31 * 42)
-    start_str = start.strftime("%Y%m%d")
-    end_str   = today.strftime("%Y%m%d")
-
-    # 전체 종목 코드 수집 (코스피 + 코스닥)
-    try:
-        kospi  = krx.get_market_ticker_list(today.strftime("%Y%m%d"), market="KOSPI")
-        kosdaq = krx.get_market_ticker_list(today.strftime("%Y%m%d"), market="KOSDAQ")
-        all_tickers = list(set(kospi + kosdaq))
-    except Exception:
-        return []
-
-    results = []
-    total = len(all_tickers)
-
-    for idx, ticker in enumerate(all_tickers):
-        if progress_callback:
-            progress_callback(idx + 1, total)
-        try:
-            # ETF/ETN 종목명 필터
-            name = krx.get_market_ticker_name(ticker)
-            if any(name.upper().startswith(p.upper()) or p in name
-                   for p in ETF_ETN_PREFIXES):
-                continue
-
-            df = krx.get_market_ohlcv(start_str, end_str, ticker, freq="m")
-            if df is None or len(df) < 27:
-                continue
-
-            df = df.reset_index()
-            df.columns = [c.strip() for c in df.columns]
-
-            # 기준선 계산: 각 월 시점의 과거 26개월 고/저
-            kijun_list = []
-            for i in range(len(df)):
-                if i < 25:
-                    kijun_list.append(None)
-                    continue
-                window = df.iloc[i-25:i+1]
-                kijun_list.append((window["고가"].max() + window["저가"].min()) / 2)
-            df["kijun"] = kijun_list
-
-            # 완성된 월봉만 사용 (당월 미완성 제외)
-            closed = df.iloc[:-1].copy()
-            n = len(closed)
-            if n < 2:
-                continue
-
-            # 최근 12개월 인덱스 범위 (전월 비교를 위해 1부터)
-            scan_start = max(1, n - 12)
-
-            found = None
-            for i in range(scan_start, n):
-                row      = closed.iloc[i]
-                prev_row = closed.iloc[i - 1]
-
-                if row["kijun"] is None or prev_row["kijun"] is None:
-                    continue
-                kijun = row["kijun"]
-
-                # 양봉 여부
-                if row["종가"] <= row["시가"]:
-                    continue
-
-                # 기준선 하→위 돌파: 전월 종가 < 기준선 & 당월 종가 >= 기준선
-                if not (prev_row["종가"] < kijun and row["종가"] >= kijun):
-                    continue
-
-                if row["시가"] <= 0:
-                    continue
-
-                rate1 = (row["종가"] - row["시가"]) / row["시가"] * 100
-
-                if rate1 >= 50:
-                    found = {
-                        "combined_rate": rate1,
-                        "breakout_close": row["종가"],
-                        "breakout_date": str(row.get("날짜", row.name))[:7],
-                        "two_candle": False,
-                    }
-                    break
-                else:
-                    # 다음달 양봉 확인
-                    if i + 1 >= n:
-                        continue
-                    next_row = closed.iloc[i + 1]
-                    if next_row["종가"] <= next_row["시가"]:
-                        continue
-                    if next_row["kijun"] is None or next_row["종가"] < next_row["kijun"]:
-                        continue
-                    if next_row["시가"] <= 0:
-                        continue
-                    rate2 = (next_row["종가"] - next_row["시가"]) / next_row["시가"] * 100
-                    combined_rate = rate1 + rate2
-                    if combined_rate >= 50:
-                        found = {
-                            "combined_rate": combined_rate,
-                            "breakout_close": row["종가"],
-                            "breakout_date": str(row.get("날짜", row.name))[:7],
-                            "two_candle": True,
-                        }
-                        break
-
-            if found is None:
-                continue
-
-            # 등급 산정
-            cr = found["combined_rate"]
-            grade = "A" if cr >= 100 else "B" if cr >= 70 else "C"
-
-            # 52주 신고가 여부 (돌파 양봉 종가 기준)
-            high_52w = fetch_52week_high(ticker)
-            is_priority = bool(high_52w and found["breakout_close"] >= high_52w * 0.99)
-
-            current_price = int(df["종가"].iloc[-1])
-
-            results.append({
-                "ticker": ticker,
-                "name": name,
-                "grade": grade,
-                "combined_rate": round(cr, 1),
-                "two_candle": found["two_candle"],
-                "breakout_date": found["breakout_date"],
-                "breakout_close": int(found["breakout_close"]),
-                "current_price": current_price,
-                "is_priority": is_priority,
-                "high_52w": high_52w,
-            })
-
-        except Exception:
-            continue
-
-    # 정렬: 우선종목 → 등급(A>B>C) → 합산상승률 내림차순
-    grade_order = {"A": 0, "B": 1, "C": 2}
-    results.sort(key=lambda x: (
-        0 if x["is_priority"] else 1,
-        grade_order.get(x["grade"], 9),
-        -x["combined_rate"]
-    ))
-    return results
-
-
 def fetch_52week_high(ticker):
     try:
         url = f"https://m.stock.naver.com/api/stock/{ticker}/integration"
@@ -572,9 +327,7 @@ def fetch_52week_high(ticker):
 def build_theme_ranking_core(
     get_trading_top_fn, get_top_rising_stock_fn,
     get_theme_list_fn, get_theme_detail_fn,
-    get_limit_up_time_fn, get_52week_high_fn,
-    get_top100_codes_fn=None,
-    get_kijun_fn=None
+    get_limit_up_time_fn, get_52week_high_fn
 ):
     """
     주도테마 랭킹 계산 핵심 로직.
@@ -583,9 +336,6 @@ def build_theme_ranking_core(
     top_stock = get_top_rising_stock_fn()
     theme_pool = get_theme_list_fn(1) + get_theme_list_fn(2)
     theme_pool = theme_pool[:THEME_SCAN_COUNT]
-
-    # ── 단계 A: 거래대금 상위 100 종목 코드 조회 ──────────────────────────
-    top100_codes = get_top100_codes_fn() if get_top100_codes_fn else set()
 
     theme_results = []
     selected_theme_code = None
@@ -607,12 +357,6 @@ def build_theme_ranking_core(
         total_count = len(detail)
         rising_ratio = rising_count / total_count if total_count > 0 else 0
 
-        # ── 단계 A 필터: 상위 100 종목이 1개도 없는 테마 제외 ──────────────
-        top100_in_theme = sum(1 for s in detail if s.get("code") in top100_codes)
-        if top100_codes and top100_in_theme == 0:
-            continue
-        # ─────────────────────────────────────────────────────────────────
-
         vol_ratios = []
         for s in detail:
             if s.get("prev_volume", 0) > 0:
@@ -632,7 +376,6 @@ def build_theme_ranking_core(
             "rising_sum": rising_sum, "total_sum": total_sum,
             "rising_ratio": rising_ratio, "avg_vol_ratio": avg_vol_ratio,
             "limit_up_count": limit_up_count, "has_limit_up": limit_up_count > 0,
-            "top100_in_theme": top100_in_theme,  # 단계 B용
             "stocks": detail
         })
 
@@ -648,37 +391,19 @@ def build_theme_ranking_core(
     max_rising_sum = max((t["rising_sum"] for t in theme_results), default=1) or 1
     max_vol_ratio = max((t["avg_vol_ratio"] for t in theme_results), default=1) or 1
     max_limit_up = max((t["limit_up_count"] for t in theme_results), default=1) or 1
-    max_top100 = max((t["top100_in_theme"] for t in theme_results), default=1) or 1
 
     for t in theme_results:
         name = t["name"]
         t["us_score"] = us_scores.get(name, 0.0)
         t["news_score"] = news_scores.get(name, 0.0)
         t["score"] = (
-            (t["rising_sum"] / max_rising_sum) * 0.20      # 상승종목 거래대금 합산 20%
-            + t["rising_ratio"] * 0.15                      # 상승종목 비율 15%
-            + (t["avg_vol_ratio"] / max_vol_ratio) * 0.10   # 거래량 급증 10%
-            + (t["limit_up_count"] / max_limit_up) * 0.10   # 상한가 종목 수 10%
-            + (t["top100_in_theme"] / max_top100) * 0.20    # 거래대금 상위100 포함 수 20%
-            + t["us_score"] * 0.13                          # 미국 연관 테마 13%
-            + t["news_score"] * 0.12                        # 뉴스/이슈 연관도 12%
+            (t["rising_sum"] / max_rising_sum) * 0.20   # 상승종목 거래대금 합산 20%
+            + t["rising_ratio"] * 0.20                   # 상승종목 비율 20%
+            + (t["avg_vol_ratio"] / max_vol_ratio) * 0.15  # 거래량 급증 15%
+            + (t["limit_up_count"] / max_limit_up) * 0.15  # 상한가 종목 수 15%
+            + t["us_score"] * 0.15                       # 미국 연관 테마 15%
+            + t["news_score"] * 0.15                     # 뉴스/이슈 연관도 15%
         )
-
-    # ── 월봉 기준선 패널티: 등락률 1위 종목이 기준선 아래면 점수 × 0.5 ──────
-    if get_kijun_fn:
-        for t in theme_results:
-            stocks = t.get("stocks", [])
-            if not stocks:
-                continue
-            top_stock = max(stocks, key=lambda s: s["rate_num"])
-            ticker = top_stock.get("code", "")
-            t["kijun_below"] = False
-            if ticker:
-                kijun_data = get_kijun_fn(ticker)
-                if kijun_data and not kijun_data["is_above"]:
-                    t["score"] *= 0.5
-                    t["kijun_below"] = True
-    # ──────────────────────────────────────────────────────────────────────
 
     theme_results.sort(key=lambda t: t["score"], reverse=True)
 
