@@ -232,8 +232,8 @@ done_time = st.session_state.get("scanner_done_time")
 
 if results is None:
     st.markdown(
-        '<div style="background:#fef9c3; color:#000000 !important; border-radius:8px; '
-        'padding:12px 16px; font-size:14px; font-weight:500; border:1px solid #f0e68c;">'
+        '<div style="background:#e2e8f0; color:#000000; border-radius:8px; '
+        'padding:12px 16px; font-size:14px; font-weight:500;">'
         '🔍 스캔 시작 버튼을 눌러 조건에 맞는 종목을 검색하세요.</div>',
         unsafe_allow_html=True
     )
@@ -241,8 +241,8 @@ if results is None:
 
 if not results:
     st.markdown(
-        '<div style="background:#fee2e2; color:#000000 !important; border-radius:8px; '
-        'padding:12px 16px; font-size:14px; font-weight:500; border:1px solid #fca5a5;">'
+        '<div style="background:#e2e8f0; color:#000000; border-radius:8px; '
+        'padding:12px 16px; font-size:14px; font-weight:500;">'
         '⚠️ 조건에 맞는 종목이 없습니다.</div>',
         unsafe_allow_html=True
     )
