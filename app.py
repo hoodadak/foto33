@@ -8,8 +8,7 @@ from utils import (
     KST, HEADERS, CACHE_TTL, TOP_THEME_COUNT, THEME_SCAN_COUNT, STOCKS_PER_THEME,
     ETF_ETN_PREFIXES, KR_MARKET_HOLIDAYS, is_market_open_now,
     fetch_trading_top, fetch_top_rising_stock, fetch_theme_list, fetch_theme_detail,
-    fetch_limit_up_time, fetch_52week_high, fetch_market_top100_codes, fetch_kijun_monthly,
-    build_theme_ranking_core, load_history
+    fetch_limit_up_time, fetch_52week_high, build_theme_ranking_core, load_history
 )
 
 try:
@@ -52,21 +51,11 @@ def get_52week_high(ticker):
     return fetch_52week_high(ticker)
 
 @st.cache_data(ttl=CACHE_TTL)
-def get_top100_codes():
-    return fetch_market_top100_codes()
-
-@st.cache_data(ttl=3600)   # 월봉은 1시간 캐시로 충분
-def get_kijun(ticker):
-    return fetch_kijun_monthly(ticker)
-
-@st.cache_data(ttl=CACHE_TTL)
 def build_theme_ranking():
     return build_theme_ranking_core(
         get_trading_top, get_top_rising_stock,
         get_theme_list, get_theme_detail,
-        get_limit_up_time, get_52week_high,
-        get_top100_codes,
-        get_kijun
+        get_limit_up_time, get_52week_high
     )
 
 @st.cache_data(ttl=3600)
@@ -313,8 +302,6 @@ def render_theme_card(theme):
         icons += '<span title="52주 신고가 발생">⭐</span>'
     if theme.get("has_limit_up"):
         icons += '<span title="상한가 발생" style="color:#dc2626; font-weight:900; font-size:1.1em;">⬆</span>'
-    if theme.get("kijun_below"):
-        icons += '<span title="1위 종목이 월봉 기준선 아래" style="color:#f59e0b; font-size:0.95em;">📉</span>'
 
     icons_html = f'<span class="theme-card-icons">{icons}</span>' if icons else ""
 
@@ -383,11 +370,6 @@ def render_theme_card(theme):
     st.markdown("<br>", unsafe_allow_html=True)
 
 
-# ===================== 테마 렌더링 =====================
-if not theme_ranking:
-    st.warning("테마 데이터를 불러오지 못했습니다. 잠시 후 새로고침 해주세요.")
-    st.stop()
-
 # PC: 1행 5개 x 2행 / 모바일: 1행 2개 x 5행
 view_mode = st.session_state.get("view_mode", "PC")
 
@@ -404,6 +386,7 @@ if view_mode == "PC":
         with col:
             render_theme_card(theme)
 else:
+    # 모바일: 1행에 2개씩, 총 5행
     for i in range(0, len(theme_ranking), 2):
         mob_cols = st.columns(2)
         for j, col in enumerate(mob_cols):
