@@ -403,6 +403,13 @@ if "supply_query" in st.session_state and st.session_state["supply_query"]:
         # ── 수급 테이블 ──────────────────────────────────────────
         st.markdown("##### 일별 수급 상세 (단위: 주)")
 
+        # 디버그 정보 (항상 표시 — 파싱 확인용)
+        with st.expander("🔧 파싱 디버그 정보 (확인 후 삭제 예정)"):
+            st.write("**외국인 원본:**", frgn)
+            st.write("**기관 원본:**", inst)
+            st.write("**기본정보:**", basic)
+            st.write("**병합결과:**", merged)
+
         if not merged:
             st.warning("수급 데이터 없음 — 장중 또는 거래일에 다시 시도하세요.")
             # 디버그 정보
