@@ -12,6 +12,12 @@ from utils import (
     build_theme_ranking_core, load_history
 )
 
+try:
+    from rs_rating import fetch_rs_ratings
+    RS_AVAILABLE = True
+except ImportError:
+    RS_AVAILABLE = False
+
 # ===================== 기본 설정 =====================
 st.set_page_config(page_title="주도테마 모바일", layout="centered")
 
@@ -54,6 +60,12 @@ def build_theme_ranking():
         get_limit_up_time, get_52week_high,
         get_top100_codes
     )
+
+@st.cache_data(ttl=86400)
+def get_rs_ratings_cached(codes_tuple):
+    if not RS_AVAILABLE:
+        return {}
+    return fetch_rs_ratings(list(codes_tuple))
 
 @st.cache_data(ttl=3600)
 def load_history_from_sheet(date_str):
@@ -190,6 +202,24 @@ if not theme_ranking:
     st.warning("데이터를 불러오지 못했습니다.")
     st.stop()
 
+# ===================== RS Rating 계산 및 주입 =====================
+if RS_AVAILABLE and is_today:
+    all_codes = list({
+        s["code"]
+        for t in theme_ranking
+        for s in t.get("stocks", [])
+        if s.get("code")
+    })
+    if all_codes:
+        rs_map = get_rs_ratings_cached(tuple(sorted(all_codes)))
+        for t in theme_ranking:
+            for s in t.get("stocks", []):
+                s["rs_rating"] = rs_map.get(s.get("code", ""))
+else:
+    for t in theme_ranking:
+        for s in t.get("stocks", []):
+            s.setdefault("rs_rating", None)
+
 # 과거 데이터에 누락된 키 기본값 설정
 for i, t in enumerate(theme_ranking):
     t.setdefault("is_top_amount", i == 0)
@@ -226,6 +256,21 @@ def make_card_html(theme):
         bar_dir = "bar-up" if rate_num >= 0 else "bar-down"
         box_class = "stock-box-m limit-up-m" if is_limit_up else "stock-box-m"
         badge_52w = '<span class="badge-52w-m">52주신고가</span>' if s.get("is_52w_high") else ""
+
+        # RS Rating 배지
+        rs = s.get("rs_rating")
+        if rs is not None:
+            if rs >= 90:
+                rs_bg = "#dc2626"
+            elif rs >= 80:
+                rs_bg = "#ea580c"
+            elif rs >= 60:
+                rs_bg = "#65a30d"
+            else:
+                rs_bg = "#94a3b8"
+            badge_rs = f'<span style="background:{rs_bg};color:#fff;font-size:8px;font-weight:700;padding:1px 3px;border-radius:2px;margin-left:1px;">RS {rs}</span>'
+        else:
+            badge_rs = ""
         encoded = urllib.parse.quote(s["name"])
         news_url = f"https://search.naver.com/search.naver?where=news&query={encoded}"
         vol_str = f"{s['amount_eok']:,.0f}억"
@@ -237,6 +282,7 @@ def make_card_html(theme):
             f'<a href="{news_url}" target="_blank" class="stock-name-m">{s["name"]}</a>'
             f'<span style="display:flex;align-items:center;gap:3px;white-space:nowrap;">'
             f'{badge_52w}'
+            f'{badge_rs}'
             f'<span class="{rate_class}">{rate_str}</span>'
             f'</span>'
             f'</div>'

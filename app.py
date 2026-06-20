@@ -19,8 +19,22 @@ try:
 except ImportError:
     GSPREAD_AVAILABLE = False
 
+try:
+    from rs_rating import fetch_rs_ratings
+    RS_AVAILABLE = True
+except ImportError:
+    RS_AVAILABLE = False
+
 # ===================== 기본 설정 =====================
 st.set_page_config(page_title="주도테마", layout="wide")
+
+# ===================== 사이드바 메뉴 =====================
+with st.sidebar:
+    st.markdown("### 📊 메뉴")
+    st.page_link("app.py", label="🏠 주도테마", icon=None)
+    st.page_link("pages/rs_lookup.py", label="📈 RS Rating 조회", icon=None)
+    st.markdown("---")
+    st.caption("RS Rating: 오닐 방식\n52주×0.7 + 13주×0.3")
 
 now = datetime.now(KST)
 weekday_list = ['월', '화', '수', '목', '금', '토', '일']
@@ -63,6 +77,13 @@ def build_theme_ranking():
         get_limit_up_time, get_52week_high,
         get_top100_codes
     )
+
+@st.cache_data(ttl=86400)
+def get_rs_ratings_cached(codes_tuple):
+    """RS Rating 캐시 래퍼 (TTL 하루 — 52주 기준 RS는 일별 변화 미미)"""
+    if not RS_AVAILABLE:
+        return {}
+    return fetch_rs_ratings(list(codes_tuple))
 
 @st.cache_data(ttl=3600)
 def load_history_from_sheet(date_str):
@@ -291,6 +312,24 @@ if not theme_ranking:
     st.warning("테마 데이터를 불러오지 못했습니다. 잠시 후 새로고침 해주세요.")
     st.stop()
 
+# ===================== RS Rating 계산 및 주입 =====================
+if RS_AVAILABLE and is_today:
+    all_codes = list({
+        s["code"]
+        for t in theme_ranking
+        for s in t.get("stocks", [])
+        if s.get("code")
+    })
+    if all_codes:
+        rs_map = get_rs_ratings_cached(tuple(sorted(all_codes)))
+        for t in theme_ranking:
+            for s in t.get("stocks", []):
+                s["rs_rating"] = rs_map.get(s.get("code", ""))
+else:
+    for t in theme_ranking:
+        for s in t.get("stocks", []):
+            s.setdefault("rs_rating", None)
+
 
 def render_theme_card(theme):
     total_sum_str = f"KRX {theme['total_sum']:,.0f}억"
@@ -353,6 +392,19 @@ def render_theme_card(theme):
         name_icons = ""
         if s.get("is_52w_high"):
             name_icons += '<span style="background-color:#16a34a; color:#fff; font-size:12px; font-weight:700; padding:1px 6px; border-radius:4px; margin-left:4px;">52주신고가</span>'
+
+        # RS Rating 배지
+        rs = s.get("rs_rating")
+        if rs is not None:
+            if rs >= 90:
+                rs_bg, rs_label = "#dc2626", f"RS {rs}"
+            elif rs >= 80:
+                rs_bg, rs_label = "#ea580c", f"RS {rs}"
+            elif rs >= 60:
+                rs_bg, rs_label = "#65a30d", f"RS {rs}"
+            else:
+                rs_bg, rs_label = "#94a3b8", f"RS {rs}"
+            name_icons += f'<span style="background-color:{rs_bg}; color:#fff; font-size:11px; font-weight:700; padding:1px 5px; border-radius:4px; margin-left:4px;">{rs_label}</span>'
 
         stock_html = (
             f'<div class="stock-item-box {data["limit"]}">'
