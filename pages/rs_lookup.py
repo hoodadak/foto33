@@ -32,31 +32,75 @@ with st.sidebar:
     st.page_link("app.py",              label="🏠 주도테마")
     st.page_link("pages/rs_lookup.py",  label="📈 RS Rating 조회")
     st.markdown("---")
-    st.caption("RS Rating: 오닐 방식\n52주×0.7 + 13주×0.3")
+    st.markdown('<p style="font-size:14px;color:#94a3b8;">RS Rating: 오닐 방식<br>52주×0.7 + 13주×0.3</p>',
+                unsafe_allow_html=True)
 
 # ── CSS ──────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
 .stApp { background-color: #ABABAB; }
+
+/* 전체 기본 폰트 크기 */
+html, body, [class*="css"] { font-size: 16px !important; }
+
+/* 제목 */
+h1 { font-size: 2rem !important; }
+h2 { font-size: 1.6rem !important; }
+h3 { font-size: 1.35rem !important; }
+
+/* st.caption 등 작은 텍스트 */
+.stCaption, [data-testid="stCaptionContainer"] p,
+small, .st-emotion-cache-16idsys p { font-size: 15px !important; }
+
+/* 사이드바 텍스트 */
+[data-testid="stSidebar"] { font-size: 16px !important; }
+[data-testid="stSidebar"] a { font-size: 16px !important; }
+
+/* 경고/에러 메시지 */
+[data-testid="stAlert"] { font-size: 16px !important; }
+[data-testid="stAlert"] p { font-size: 16px !important; }
+
+/* expander 내부 */
+.streamlit-expanderContent p,
+.streamlit-expanderContent li,
+.streamlit-expanderContent td,
+.streamlit-expanderContent th { font-size: 15px !important; }
+
+/* RS 배지 */
 .rs-badge {
-    display: inline-block; padding: 4px 14px; border-radius: 8px;
-    font-size: 28px; font-weight: 900; color: white; margin: 4px 0;
+    display: inline-block; padding: 6px 20px; border-radius: 8px;
+    font-size: 34px; font-weight: 900; color: white; margin: 6px 0;
 }
-.rs-meta { font-size: 13px; color: #64748b; margin-top: 2px; }
+/* RS 등급 레이블 */
+.rs-meta { font-size: 17px; color: #1e293b; font-weight: 600; margin-top: 4px; }
+
+/* 종목 헤더 카드 */
 .stock-header {
-    background: #1e3a5f; border-radius: 8px; padding: 12px 16px;
-    color: white; margin-bottom: 10px;
+    background: #1e3a5f; border-radius: 8px; padding: 14px 18px;
+    color: white; margin-bottom: 12px;
 }
+.stock-header .name { font-size: 18px; font-weight: 700; }
+.stock-header .code { font-size: 14px; color: #94a3b8; margin-top: 2px; }
+
+/* 섹션 레이블 (일별/주별/월별) */
 .section-label {
-    font-size: 13px; font-weight: 700; color: #475569;
-    background: #e2e8f0; border-radius: 4px;
-    padding: 2px 8px; display: inline-block; margin-bottom: 4px;
+    font-size: 16px; font-weight: 700; color: #1e293b;
+    background: #cbd5e1; border-radius: 4px;
+    padding: 4px 12px; display: inline-block; margin-bottom: 6px;
 }
+
+/* metric 숫자/레이블 */
+[data-testid="stMetricValue"] { font-size: 22px !important; }
+[data-testid="stMetricLabel"] { font-size: 14px !important; }
+
+/* 탭 레이블 */
+button[data-baseweb="tab"] { font-size: 15px !important; }
 </style>
 """, unsafe_allow_html=True)
 
 st.title("📈 RS Rating 조회")
-st.caption("오닐(William O'Neil) 방식 — 52주×0.7 + 13주×0.3 복합 수익률 기준 백분위")
+st.markdown('<p style="font-size:17px;color:#1e293b;margin-top:-8px;">오닐(William O\'Neil) 방식 — 52주×0.7 + 13주×0.3 복합 수익률 기준 백분위</p>',
+            unsafe_allow_html=True)
 
 if not RS_AVAILABLE:
     st.error("rs_rating.py를 찾을 수 없습니다. 프로젝트 루트에 파일이 있는지 확인하세요.")
@@ -297,8 +341,8 @@ if "rs_query" in st.session_state and st.session_state["rs_query"]:
             rs_text     = f"RS {rs}" if rs else "RS -"
             st.markdown(f"""
             <div class="stock-header">
-                <div style="font-size:15px;font-weight:700;">{stock['name']}</div>
-                <div style="font-size:12px;color:#94a3b8;">{code} · {market}</div>
+                <div class="name">{stock['name']}</div>
+                <div class="code">{code} · {market}</div>
             </div>
             <span class="rs-badge" style="background:{badge_color};">{rs_text}</span>
             <div class="rs-meta">{label}</div>
