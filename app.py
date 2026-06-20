@@ -31,8 +31,9 @@ st.set_page_config(page_title="주도테마", layout="wide")
 # ===================== 사이드바 메뉴 =====================
 with st.sidebar:
     st.markdown("### 📊 메뉴")
-    st.page_link("app.py", label="🏠 주도테마", icon=None)
-    st.page_link("pages/rs_lookup.py", label="📈 RS Rating 조회", icon=None)
+    st.page_link("app.py",            label="🏠 주도테마")
+    st.page_link("pages/rs_lookup.py", label="📈 RS Rating 조회")
+    st.page_link("pages/수급분석.py",  label="💰 수급분석")
     st.markdown("---")
     st.caption("RS Rating: 오닐 방식\n52주×0.7 + 13주×0.3")
 
