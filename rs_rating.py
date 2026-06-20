@@ -382,11 +382,26 @@ def fetch_rs_history(code: str) -> "pd.DataFrame | None":
 
         results = []
         for i in range(start_calc, total):
-            stock_slice = closes.iloc[:i + 1]
-            bm_slice    = bm_closes.iloc[:i + 1]
+            # ── 핵심 수정: 각 시점에서 정확히 최근 252일/65일 기준으로 수익률 계산 ──
+            # 전체 누적 슬라이스가 아닌, 해당 시점 기준 고정 윈도우 사용
+            price_now   = float(closes.iloc[i])
+            bm_now      = float(bm_closes.iloc[i])
 
-            stock_ret = _composite_return(stock_slice)
-            bm_ret    = _composite_return(bm_slice)
+            # 52주(252 거래일) 전 가격
+            idx_52 = max(0, i - 252)
+            price_52  = float(closes.iloc[idx_52])
+            bm_52     = float(bm_closes.iloc[idx_52])
+
+            # 13주(65 거래일) 전 가격
+            idx_13 = max(0, i - 65)
+            price_13  = float(closes.iloc[idx_13])
+            bm_13     = float(bm_closes.iloc[idx_13])
+
+            # 복합 수익률 = 52주×0.7 + 13주×0.3
+            stock_ret = ((price_now - price_52) / price_52 * 0.7 +
+                         (price_now - price_13) / price_13 * 0.3) if price_52 > 0 and price_13 > 0 else None
+            bm_ret    = ((bm_now - bm_52) / bm_52 * 0.7 +
+                         (bm_now - bm_13) / bm_13 * 0.3) if bm_52 > 0 and bm_13 > 0 else None
 
             if stock_ret is None or bm_ret is None:
                 continue
