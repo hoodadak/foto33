@@ -223,14 +223,44 @@ def fetch_rs_ratings(codes: list, use_unified_benchmark: bool = False) -> dict:
     if not code_relative:
         return {}
 
-    # 5. 백분위 → RS Rating 1~99 변환
-    sorted_codes = sorted(code_relative, key=lambda c: code_relative[c])
-    n = len(sorted_codes)
+    # 5. RS Rating 1~99 변환
+    # 종목이 5개 미만이면 상대끼리 비교가 무의미 → 절대값 기준 변환
+    # 상대값(relative) 의미: 1.0 = 벤치마크와 동일, >1 = 벤치마크 상회
+    # 절대값 구간 매핑 (경험적):
+    #   relative >= 2.0  → RS 90~99
+    #   relative >= 1.3  → RS 80~89
+    #   relative >= 1.0  → RS 60~79
+    #   relative >= 0.5  → RS 40~59
+    #   relative <  0.5  → RS 1~39
+    def _relative_to_rs_absolute(rel: float) -> int:
+        if rel >= 2.0:
+            # 2.0 이상: 80~99 구간 선형 보간 (최대 3.0 기준)
+            return max(80, min(99, round(80 + (rel - 2.0) / 1.0 * 19)))
+        elif rel >= 1.3:
+            return max(70, min(79, round(70 + (rel - 1.3) / 0.7 * 9)))
+        elif rel >= 1.0:
+            return max(60, min(69, round(60 + (rel - 1.0) / 0.3 * 9)))
+        elif rel >= 0.5:
+            return max(40, min(59, round(40 + (rel - 0.5) / 0.5 * 19)))
+        elif rel >= 0.0:
+            return max(20, min(39, round(20 + rel / 0.5 * 19)))
+        else:
+            # 음수(절대 하락): 1~19
+            return max(1, min(19, round(19 + rel * 10)))
+
     rs_ratings = {}
-    for rank, code in enumerate(sorted_codes):
-        # rank 0 = 최하위 → RS 1, rank n-1 = 최상위 → RS 99
-        rs = max(1, min(99, round(1 + (rank / max(n - 1, 1)) * 98)))
-        rs_ratings[code] = rs
+
+    if len(code_relative) < 5:
+        # 절대값 기준 — 종목 수가 적어 상호 백분위가 의미 없을 때
+        for code, rel in code_relative.items():
+            rs_ratings[code] = _relative_to_rs_absolute(rel)
+    else:
+        # 백분위 기준 — 충분한 종목 수일 때 (주도테마 다종목 스캔 등)
+        sorted_codes = sorted(code_relative, key=lambda c: code_relative[c])
+        n = len(sorted_codes)
+        for rank, code in enumerate(sorted_codes):
+            rs = max(1, min(99, round(1 + (rank / max(n - 1, 1)) * 98)))
+            rs_ratings[code] = rs
 
     return rs_ratings
 
