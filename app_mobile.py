@@ -13,7 +13,7 @@ from utils import (
 )
 
 try:
-    from rs_rating import fetch_rs_ratings
+    from rs_rating import fetch_rs_ratings_from_history
     RS_AVAILABLE = True
 except ImportError:
     RS_AVAILABLE = False
@@ -65,7 +65,7 @@ def build_theme_ranking():
 def get_rs_ratings_cached(codes_tuple):
     if not RS_AVAILABLE:
         return {}
-    return fetch_rs_ratings(list(codes_tuple))
+    return fetch_rs_ratings_from_history(list(codes_tuple))
 
 @st.cache_data(ttl=3600)
 def load_history_from_sheet(date_str):

@@ -20,7 +20,7 @@ except ImportError:
     GSPREAD_AVAILABLE = False
 
 try:
-    from rs_rating import fetch_rs_ratings
+    from rs_rating import fetch_rs_ratings_from_history
     RS_AVAILABLE = True
 except ImportError:
     RS_AVAILABLE = False
@@ -80,10 +80,10 @@ def build_theme_ranking():
 
 @st.cache_data(ttl=86400)
 def get_rs_ratings_cached(codes_tuple):
-    """RS Rating 캐시 래퍼 (TTL 하루 — 52주 기준 RS는 일별 변화 미미)"""
+    """RS Rating 캐시 래퍼 — 히스토리 마지막값 기준 (그래프 RS와 동일)"""
     if not RS_AVAILABLE:
         return {}
-    return fetch_rs_ratings(list(codes_tuple))
+    return fetch_rs_ratings_from_history(list(codes_tuple))
 
 @st.cache_data(ttl=3600)
 def load_history_from_sheet(date_str):

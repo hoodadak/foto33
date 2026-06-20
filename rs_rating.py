@@ -481,3 +481,121 @@ def resample_rs_history(df: "pd.DataFrame", freq: str) -> "pd.DataFrame":
 
     except Exception:
         return df
+
+
+def fetch_rs_ratings_from_history(codes: list) -> dict:
+    """
+    다종목 RS Rating을 히스토리 마지막값 기준으로 계산.
+    fetch_rs_history()와 동일한 슬라이딩 윈도우 방식 사용.
+
+    rs_lookup.py와 동일한 기준 → 주도테마 카드 RS와 조회 페이지 RS 일치.
+
+    Parameters
+    ----------
+    codes : list of str  (6자리 종목코드)
+
+    Returns
+    -------
+    dict : {종목코드: RS Rating(int)}
+    """
+    if not YFINANCE_AVAILABLE or not codes:
+        return {}
+
+    try:
+        import yfinance as yf
+        import pandas as pd
+
+        # 벤치마크 2종 3년치 한 번만 다운로드
+        bm_raw_kospi  = yf.download(KOSPI_TICKER,  period="3y", progress=False, auto_adjust=True)
+        bm_raw_kosdaq = yf.download(KOSDAQ_TICKER, period="3y", progress=False, auto_adjust=True)
+
+        def _get_bm_closes(market: str) -> "pd.Series":
+            raw = bm_raw_kospi if market == "kospi" else bm_raw_kosdaq
+            closes = raw["Close"].dropna()
+            if isinstance(closes, pd.DataFrame):
+                closes = closes.iloc[:, 0]
+            return closes
+
+        # 종목 일괄 다운로드 (배치)
+        def _to_rs(rel: float) -> int:
+            if rel >= 2.0:
+                return max(80, min(99, round(80 + (rel - 2.0) / 1.0 * 19)))
+            elif rel >= 1.3:
+                return max(70, min(79, round(70 + (rel - 1.3) / 0.7 * 9)))
+            elif rel >= 1.0:
+                return max(60, min(69, round(60 + (rel - 1.0) / 0.3 * 9)))
+            elif rel >= 0.5:
+                return max(40, min(59, round(40 + (rel - 0.5) / 0.5 * 19)))
+            elif rel >= 0.0:
+                return max(20, min(39, round(20 + rel / 0.5 * 19)))
+            else:
+                return max(1, min(19, round(19 + rel * 10)))
+
+        result = {}
+
+        for i in range(0, len(codes), BATCH_SIZE):
+            batch = codes[i: i + BATCH_SIZE]
+
+            # .KS 티커로 배치 다운로드
+            ks_tickers = [f"{c}.KS" for c in batch]
+            raw = yf.download(ks_tickers, period="3y", progress=False,
+                              auto_adjust=True, threads=True)
+            if raw.empty:
+                continue
+
+            closes_df = raw["Close"] if "Close" in raw.columns else raw
+            if isinstance(closes_df, pd.Series):
+                closes_df = closes_df.to_frame(name=ks_tickers[0])
+
+            for code in batch:
+                ticker = f"{code}.KS"
+                # .KS 없으면 .KQ 재시도 (단건)
+                if ticker not in closes_df.columns or closes_df[ticker].dropna().empty:
+                    try:
+                        kq_raw = yf.download(f"{code}.KQ", period="3y",
+                                             progress=False, auto_adjust=True)
+                        if kq_raw.empty:
+                            continue
+                        stock_closes = kq_raw["Close"].dropna()
+                        if isinstance(stock_closes, pd.DataFrame):
+                            stock_closes = stock_closes.iloc[:, 0]
+                        market = "kosdaq"
+                    except Exception:
+                        continue
+                else:
+                    stock_closes = closes_df[ticker].dropna()
+                    market = _detect_market(code, ticker, 0, 0)
+
+                bm_closes = _get_bm_closes(market)
+
+                # 공통 날짜 정렬
+                common = stock_closes.index.intersection(bm_closes.index)
+                if len(common) < 65:
+                    continue
+                s = stock_closes.loc[common]
+                b = bm_closes.loc[common]
+
+                # 마지막 날 기준 RS 계산 (슬라이딩 윈도우 마지막 값과 동일)
+                i_last = len(s) - 1
+                idx_52 = max(0, i_last - 252)
+                idx_13 = max(0, i_last - 65)
+
+                p_now, p_52, p_13 = float(s.iloc[i_last]), float(s.iloc[idx_52]), float(s.iloc[idx_13])
+                b_now, b_52, b_13 = float(b.iloc[i_last]), float(b.iloc[idx_52]), float(b.iloc[idx_13])
+
+                if p_52 <= 0 or p_13 <= 0 or b_52 <= 0 or b_13 <= 0:
+                    continue
+
+                stock_ret = (p_now - p_52) / p_52 * 0.7 + (p_now - p_13) / p_13 * 0.3
+                bm_ret    = (b_now - b_52) / b_52 * 0.7 + (b_now - b_13) / b_13 * 0.3
+
+                rel = stock_ret / abs(bm_ret) if bm_ret != 0 else stock_ret
+                result[code] = _to_rs(rel)
+
+            if i + BATCH_SIZE < len(codes):
+                time.sleep(REQUEST_DELAY)
+
+        return result
+
+    except Exception:
+        return {}
