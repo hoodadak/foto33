@@ -240,7 +240,7 @@ def make_rs_price_fig(df_day, df_week, df_month, stock_name: str, color: str):
                 hovermode="x unified",
             )
             fig.update_yaxes(showgrid=True, gridcolor="#e2e8f0",
-                             range=[0, 100], title_text="RS", row=1, col=1)
+                             title_text="RS", row=1, col=1)
             fig.update_yaxes(showgrid=True, gridcolor="#e2e8f0",
                              title_text="주가(원)", row=2, col=1)
             fig.update_xaxes(showgrid=True, gridcolor="#e2e8f0")
@@ -294,7 +294,7 @@ def make_compare_fig(histories: dict, valid: list, freq: str, title: str, x_tail
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
             xaxis=dict(showgrid=True, gridcolor="#e2e8f0"),
-            yaxis=dict(showgrid=True, gridcolor="#e2e8f0", range=[0, 100], title="RS"),
+            yaxis=dict(showgrid=True, gridcolor="#e2e8f0", title="RS"),
             legend=dict(orientation="h", y=-0.25),
             margin=dict(l=40, r=40, t=36, b=50),
             hovermode="x unified",
@@ -359,6 +359,8 @@ if "rs_query" in st.session_state and st.session_state["rs_query"]:
             df = cached_rs_history(stock["code"])
             if df is not None and not df.empty:
                 histories[stock["code"]] = df
+            else:
+                st.warning(f"⚠️ {stock['name']}({stock['code']}): 히스토리 데이터 없음 — yfinance 조회 실패 가능성")
 
     # ── 탭: 전체비교 / 종목별 ────────────────────────────────────────
     tab_compare, *tab_singles = st.tabs(
