@@ -404,12 +404,24 @@ def fetch_rs_history(code: str) -> "pd.DataFrame | None":
 
         df = pd.DataFrame(results)
 
-        # rs_raw → 1~99 정규화 (전체 기간 기준)
-        mn, mx = df["rs_raw"].min(), df["rs_raw"].max()
-        if mx > mn:
-            df["rs_score"] = ((df["rs_raw"] - mn) / (mx - mn) * 98 + 1).round().astype(int)
-        else:
-            df["rs_score"] = 50
+        # rs_raw → 절대값 기준 RS 변환
+        # (전체 기간 min-max 정규화 대신 벤치마크 대비 절대 구간 사용)
+        # relative 의미: 1.0 = 벤치마크와 동일, 2.0 = 벤치마크의 2배
+        def _to_rs(rel: float) -> int:
+            if rel >= 2.0:
+                return max(80, min(99, round(80 + (rel - 2.0) / 1.0 * 19)))
+            elif rel >= 1.3:
+                return max(70, min(79, round(70 + (rel - 1.3) / 0.7 * 9)))
+            elif rel >= 1.0:
+                return max(60, min(69, round(60 + (rel - 1.0) / 0.3 * 9)))
+            elif rel >= 0.5:
+                return max(40, min(59, round(40 + (rel - 0.5) / 0.5 * 19)))
+            elif rel >= 0.0:
+                return max(20, min(39, round(20 + rel / 0.5 * 19)))
+            else:
+                return max(1, min(19, round(19 + rel * 10)))
+
+        df["rs_score"] = df["rs_raw"].apply(_to_rs)
 
         df = df.reset_index(drop=True)
         return df[["date", "rs_score", "rs_raw", "price"]]
