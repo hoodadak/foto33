@@ -33,7 +33,7 @@ with st.sidebar:
     st.markdown("### 📊 메뉴")
     st.page_link("app.py",            label="🏠 주도테마")
     st.page_link("pages/rs_lookup.py", label="📈 RS Rating 조회")
-    st.page_link("pages/수급분석.py",  label="💰 수급분석")
+    st.page_link("pages/supply.py",  label="💰 수급분석")
     st.markdown("---")
     st.caption("RS Rating: 오닐 방식\n52주×0.7 + 13주×0.3")
 
