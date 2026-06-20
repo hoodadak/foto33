@@ -153,29 +153,38 @@ def fetch_foreign_trading(code: str, days: int = 3) -> list:
             return []
         soup = BeautifulSoup(res.text, "html.parser")
 
+        def try_int(td):
+            try:
+                v = td.get_text(strip=True).replace(",","").replace("+","").replace("▲","").replace("▼","-")
+                return int(v) if v and v not in ("-","") else 0
+            except:
+                return 0
+
         result = []
-        # type2 테이블 찾기
         for table in soup.find_all("table"):
-            cls = table.get("class", [])
-            if "type2" in cls or "type_2" in cls:
-                for tr in table.find_all("tr"):
-                    tds = tr.find_all("td")
-                    if len(tds) < 4:
-                        continue
-                    date_str = tds[0].get_text(strip=True)
-                    if not re.match(r"\d{4}\.\d{2}\.\d{2}", date_str):
-                        continue
-                    try:
-                        # 외국인 순매수는 4번째 열 (index 3)
-                        val = tds[3].get_text(strip=True).replace(",", "").replace("+", "").replace("▲","").replace("▼","-")
-                        foreign = int(val) if val and val != "-" else 0
-                    except:
-                        foreign = 0
-                    result.append({"date": date_str, "foreign": foreign})
-                    if len(result) >= days:
-                        break
-                if result:
+            rows_found = []
+            for tr in table.find_all("tr"):
+                tds = tr.find_all("td")
+                if len(tds) < 4:
+                    continue
+                date_str = tds[0].get_text(strip=True)
+                if not re.match(r"\d{4}\.\d{2}\.\d{2}", date_str):
+                    continue
+                n = len(tds)
+                # 9열: 날짜|종가|전일비|등락률|거래량|기관순매매|외국인순매매|보유주수|보유율
+                # 6열: 날짜|종가|전일비|외국인순매매|보유주수|보유율
+                if n >= 7:
+                    foreign = try_int(tds[6])
+                elif n >= 4:
+                    foreign = try_int(tds[3])
+                else:
+                    continue
+                rows_found.append({"date": date_str, "foreign": foreign})
+                if len(rows_found) >= days:
                     break
+            if rows_found:
+                result = rows_found
+                break
         return result
     except:
         return []
@@ -184,26 +193,25 @@ def fetch_foreign_trading(code: str, days: int = 3) -> list:
 # ── 기관/프로그램 세부 순매수 ─────────────────────────────────────────
 @st.cache_data(ttl=300, show_spinner=False)
 def fetch_institutional_detail(code: str, days: int = 3) -> list:
-    """네이버 institutional 페이지에서 기관세부 + 프로그램 파싱"""
+    """기관세부 + 프로그램 순매수(주)
+    1차: institutional.naver (기관 세부)
+    2차: frgn.naver 기관합계 컬럼 fallback
+    """
+    def pn(td):
+        try:
+            v = td.get_text(strip=True).replace(",","").replace("+","").replace("▲","").replace("▼","-")
+            return int(v) if v and v not in ("-","") else 0
+        except:
+            return 0
+
+    # 1차: institutional.naver
     try:
         url = f"https://finance.naver.com/item/institutional.naver?code={code}"
         res = requests.get(url, headers=HEADERS_PC, timeout=8)
-        if res.status_code != 200:
-            return []
-        soup = BeautifulSoup(res.text, "html.parser")
-
-        result = []
-
-        def pn(td):
-            try:
-                v = td.get_text(strip=True).replace(",","").replace("+","").replace("▲","").replace("▼","-")
-                return int(v) if v and v not in ("-", "") else 0
-            except:
-                return 0
-
-        for table in soup.find_all("table"):
-            cls = table.get("class", [])
-            if "type2" in cls or "type_2" in cls:
+        if res.status_code == 200:
+            soup = BeautifulSoup(res.text, "html.parser")
+            result = []
+            for table in soup.find_all("table"):
                 for tr in table.find_all("tr"):
                     tds = tr.find_all("td")
                     if len(tds) < 9:
@@ -227,10 +235,42 @@ def fetch_institutional_detail(code: str, days: int = 3) -> list:
                     if len(result) >= days:
                         break
                 if result:
-                    break
-        return result
+                    return result
     except:
-        return []
+        pass
+
+    # 2차 fallback: frgn.naver 기관합계 컬럼 (index 5)
+    try:
+        url2 = f"https://finance.naver.com/item/frgn.naver?code={code}"
+        res2 = requests.get(url2, headers=HEADERS_PC, timeout=8)
+        if res2.status_code == 200:
+            soup2 = BeautifulSoup(res2.text, "html.parser")
+            result = []
+            for table in soup2.find_all("table"):
+                for tr in table.find_all("tr"):
+                    tds = tr.find_all("td")
+                    if len(tds) < 6:
+                        continue
+                    date_str = tds[0].get_text(strip=True)
+                    if not re.match(r"\d{4}\.\d{2}\.\d{2}", date_str):
+                        continue
+                    # 9열: 날짜|종가|전일비|등락률|거래량|기관순매매|외국인순매매|보유주수|보유율
+                    inst_val = pn(tds[5]) if len(tds) >= 6 else 0
+                    result.append({
+                        "date":              date_str,
+                        "institution_total": inst_val,
+                        "financial": 0, "insurance": 0, "trust": 0,
+                        "etf": 0, "pension": 0, "private": 0,
+                        "nation": 0, "other_corp": 0, "program": 0,
+                    })
+                    if len(result) >= days:
+                        break
+                if result:
+                    return result
+    except:
+        pass
+
+    return []
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
