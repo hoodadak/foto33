@@ -16,7 +16,7 @@ KST = timezone(timedelta(hours=9))
 
 try:
     from rs_rating import (
-        fetch_rs_ratings, fetch_rs_history, resample_rs_history,
+        fetch_rs_ratings_from_history, fetch_rs_history, resample_rs_history,
         search_code_by_name, fetch_stock_name,
         rs_rating_label, _detect_market,
     )
@@ -113,7 +113,8 @@ def cached_rs_history(code: str):
 
 @st.cache_data(ttl=86400, show_spinner=False)
 def cached_current_rs(codes_tuple: tuple):
-    return fetch_rs_ratings(list(codes_tuple))
+    """주도테마와 동일한 방식 — 히스토리 슬라이딩 윈도우 마지막값 기준"""
+    return fetch_rs_ratings_from_history(list(codes_tuple))
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def cached_search(query: str):
@@ -323,13 +324,14 @@ if "rs_query" in st.session_state and st.session_state["rs_query"]:
 
     codes = [p["code"] for p in valid]
 
-    # 현재 RS 조회
+    # ── 현재 RS 조회 (주도테마와 동일 방식) ─────────────────────────
     with st.spinner("RS Rating 계산 중... (최초 조회 시 10~20초)"):
         current_rs_map = cached_current_rs(tuple(sorted(codes)))
 
     # ── 현재 RS 카드 ─────────────────────────────────────────────────
     st.markdown("---")
     st.markdown("### 현재 RS Rating")
+    st.caption("※ 고점 대비 하락도 반영된 슬라이딩 윈도우 기준입니다.")
     card_cols = st.columns(len(valid))
     for i, stock in enumerate(valid):
         code = stock["code"]
@@ -349,20 +351,18 @@ if "rs_query" in st.session_state and st.session_state["rs_query"]:
             """, unsafe_allow_html=True)
 
     # ── 히스토리 데이터 수집 ────────────────────────────────────────
-    st.markdown("---")
-    st.markdown("### RS 변화 그래프")
-    st.caption("※ 히스토리 RS는 해당 종목 자체의 상대강도 추세 파악용입니다. 절대 등급은 위 '현재 RS Rating' 기준으로 판단하세요.")
-
-    histories = {}   # {code: df_daily(2년)}
     with st.spinner("RS 히스토리 로딩 중... (최초 약 20~40초)"):
+        histories = {}
         for stock in valid:
             df = cached_rs_history(stock["code"])
             if df is not None and not df.empty:
                 histories[stock["code"]] = df
             else:
-                st.warning(f"⚠️ {stock['name']}({stock['code']}): 히스토리 데이터 없음 — yfinance 조회 실패 가능성")
+                st.warning(f"⚠️ {stock['name']}({stock['code']}): 히스토리 데이터 없음")
 
     # ── 탭: 전체비교 / 종목별 ────────────────────────────────────────
+    st.markdown("---")
+    st.markdown("### RS 변화 그래프")
     tab_compare, *tab_singles = st.tabs(
         ["📊 전체 비교"] + [p["name"] for p in valid]
     )
