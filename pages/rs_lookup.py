@@ -37,7 +37,7 @@ with st.sidebar:
 # ── CSS ──────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-.stApp { background-color: #DBFDF9; }
+.stApp { background-color: #ABABAB; }
 .rs-badge {
     display: inline-block; padding: 4px 14px; border-radius: 8px;
     font-size: 28px; font-weight: 900; color: white; margin: 4px 0;
