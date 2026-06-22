@@ -625,7 +625,7 @@ if is_today:
             )
             for i, (name, cnt) in enumerate(rows_debug, 1):
                 crown = "👑 " if (crown_stock_name and name == crown_stock_name) else ""
-                st.write(f"{i}. {crown}**{name}** — 뉴스 {cnt}건")
+                st.markdown(f'<span style="color:#000000;">{i}. {crown}<b>{name}</b> — 뉴스 {cnt}건</span>', unsafe_allow_html=True)
         else:
             st.write("데이터 없음")
 
