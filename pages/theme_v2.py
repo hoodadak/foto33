@@ -175,6 +175,23 @@ def get_news_counts_c(theme_names_tuple):
         return {name: 0 for name in theme_names}
 
 @st.cache_data(ttl=CACHE_TTL)
+def get_news_counts_by_stock_c(stock_names_tuple):
+    """뉴스 노출 갯수 - 종목명 단위"""
+    stock_names = list(stock_names_tuple)
+    try:
+        url = "https://finance.naver.com/news/news_list.naver?mode=LSS2D&section_id=101&section_id2=258"
+        res = requests.get(url, headers=HEADERS, timeout=7)
+        res.encoding = "euc-kr"
+        soup = BeautifulSoup(res.text, "html.parser")
+        titles = [a.text.strip() for a in soup.select("dl dd.articleSubject a")]
+        if not titles:
+            titles = [a.text.strip() for a in soup.select("ul.newsList li a")]
+        news_text = " ".join(titles)
+        return {name: news_text.count(name) for name in stock_names}
+    except Exception:
+        return {name: 0 for name in stock_names}
+
+@st.cache_data(ttl=CACHE_TTL)
 def get_us_scores_c(theme_names_tuple):
     return fetch_us_theme_scores(list(theme_names_tuple))
 
@@ -367,9 +384,6 @@ def build_theme_ranking_v2():
     # 1단계: 상승거래대금합 기준 정렬
     theme_results.sort(key=lambda t: t["rising_sum"], reverse=True)
 
-    # 거래대금 원래 1위 저장 (👑 판별용)
-    orig_top = theme_results[0] if theme_results else None
-
     # 2단계: 미국연관 1위 → 강제 1위
     us_top = max(theme_results, key=lambda t: t["us_score"])
     if theme_results[0]["name"] != us_top["name"]:
@@ -388,14 +402,21 @@ def build_theme_ranking_v2():
             theme_results = [theme_results[0], news_top] + rest
         theme_results[1]["v2_rank_reason"] = "news"
 
-    # 👑 왕관: 거래대금 원래 1위 테마의 거래대금 1위 종목 = 뉴스노출 1위 종목
+    # 👑 왕관: 전체 종목 거래대금 상위 10 중 뉴스 노출 1위 종목
     crown_stock_name = None
-    if orig_top and orig_top["stocks"]:
-        top_stock_in_theme = max(orig_top["stocks"], key=lambda s: s["amount_eok"])
-        news_top_theme = max(theme_results, key=lambda t: t["news_count"])
-        # 거래대금 1위 테마 = 뉴스 1위 테마일 때 해당 종목에 👑
-        if orig_top["name"] == news_top_theme["name"]:
-            crown_stock_name = top_stock_in_theme["name"]
+    all_stocks_flat = [
+        s for t in theme_results for s in t.get("stocks", [])
+    ]
+    all_stocks_flat.sort(key=lambda s: s["amount_eok"], reverse=True)
+    top10_stocks = all_stocks_flat[:10]
+    if top10_stocks:
+        top10_names = tuple(s["name"] for s in top10_stocks)
+        stock_news = get_news_counts_by_stock_c(top10_names)
+        # 뉴스 1위 종목
+        news_top_stock = max(top10_names, key=lambda n: stock_news.get(n, 0))
+        # 뉴스 언급이 1건 이상일 때만 왕관 부여
+        if stock_news.get(news_top_stock, 0) > 0:
+            crown_stock_name = news_top_stock
 
     top10 = theme_results[:10]
 
