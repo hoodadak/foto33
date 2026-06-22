@@ -613,6 +613,22 @@ if not top10:
     st.warning("테마 데이터를 불러오지 못했습니다. 잠시 후 새로고침 해주세요.")
     st.stop()
 
+# ===================== 디버그: 뉴스 노출 현황 =====================
+if is_today:
+    with st.expander("🔍 거래대금 상위 10 종목 뉴스 노출 현황 (디버그)", expanded=False):
+        market_top10 = get_market_top10_stocks_c()
+        if market_top10:
+            stock_news = get_news_counts_by_stock_c(tuple(market_top10))
+            rows_debug = sorted(
+                [(name, stock_news.get(name, 0)) for name in market_top10],
+                key=lambda x: x[1], reverse=True
+            )
+            for i, (name, cnt) in enumerate(rows_debug, 1):
+                crown = "👑 " if (crown_stock_name and name == crown_stock_name) else ""
+                st.write(f"{i}. {crown}**{name}** — 뉴스 {cnt}건")
+        else:
+            st.write("데이터 없음")
+
 
 # ===================== 카드 렌더 함수 =====================
 def render_stock_item(s, now, crown_stock_name=None):
