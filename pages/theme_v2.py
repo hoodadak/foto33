@@ -184,6 +184,124 @@ def get_rs_ratings_c(codes_tuple):
         return {}
     return fetch_rs_ratings_from_history(list(codes_tuple))
 
+@st.cache_data(ttl=3600)
+def load_history_v2(date_str):
+    """주도테마_기록_V2 시트에서 특정 날짜 데이터 불러오기"""
+    import json, os
+    try:
+        import gspread
+        from google.oauth2.service_account import Credentials
+    except ImportError:
+        return None, "gspread 미설치"
+    try:
+        creds_json = os.environ.get("GOOGLE_CREDENTIALS", "").strip()
+        sheet_id   = os.environ.get("SHEET_ID", "")
+        if not creds_json or not sheet_id:
+            return None, "환경변수 없음"
+        creds_dict = json.loads(creds_json)
+        scopes = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+        creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+        gc = gspread.authorize(creds)
+        wb = gc.open_by_key(sheet_id)
+        try:
+            ws = wb.worksheet("주도테마_기록_V2")
+        except gspread.exceptions.WorksheetNotFound:
+            return None, "주도테마_기록_V2 시트 없음"
+
+        rows = ws.get_all_values()
+        if len(rows) < 2:
+            return None, "데이터 없음"
+
+        date_rows = [
+            r for r in rows[1:]
+            if r and r[0] == date_str and len(r) > 2
+            and r[1] not in ("개별상한가", "")
+            and not (len(r) > 2 and r[2].startswith("---"))
+        ]
+        if not date_rows:
+            return None, f"{date_str} 데이터 없음"
+
+        themes = []
+        separated = []
+        for row in date_rows:
+            if row[1].startswith("상한가"):
+                try:
+                    rate_num = float(row[7].replace("%","").replace("+","")) if len(row) > 7 else 0.0
+                except:
+                    rate_num = 0.0
+                try:
+                    amount_eok = float(row[8].replace(",","")) if len(row) > 8 and row[8] else 0.0
+                except:
+                    amount_eok = 0.0
+                orig = row[10].replace("(원래테마: ","").replace(")","") if len(row) > 10 else ""
+                separated.append({
+                    "name": row[2], "code": "", "price": 0,
+                    "rate_num": rate_num, "amount_eok": amount_eok,
+                    "is_limit_up": True, "is_52w_high": False,
+                    "rs_rating": None, "original_theme": orig,
+                })
+                continue
+
+            stocks = []
+            for i in range(6, min(6 + 5*4, len(row)), 4):
+                name = row[i] if i < len(row) else ""
+                if not name:
+                    continue
+                try:
+                    rate_num = float(row[i+1].replace("%","").replace("+","")) if i+1 < len(row) else 0.0
+                except:
+                    rate_num = 0.0
+                try:
+                    amount_eok = float(row[i+2].replace(",","")) if i+2 < len(row) and row[i+2] else 0.0
+                except:
+                    amount_eok = 0.0
+                try:
+                    price = int(str(row[i+3]).replace(",","")) if i+3 < len(row) and row[i+3] else 0
+                except:
+                    price = 0
+                stocks.append({
+                    "name": name, "code": "", "price": price,
+                    "rate_num": rate_num, "amount_eok": amount_eok,
+                    "is_limit_up": rate_num >= 29.5, "is_52w_high": False,
+                    "rs_rating": None,
+                })
+
+            try:
+                rising_sum = float(row[3].replace(",","")) if row[3] else 0.0
+            except:
+                rising_sum = 0.0
+            try:
+                us_score = float(row[4]) if row[4] else 0.0
+            except:
+                us_score = 0.0
+            try:
+                news_count = int(row[5]) if row[5] else 0
+            except:
+                news_count = 0
+
+            rank_num = 0
+            try:
+                rank_num = int(row[1])
+            except:
+                pass
+            v2_rank_reason = "us" if rank_num == 1 else ("news" if rank_num == 2 else "")
+
+            themes.append({
+                "name": row[2], "code": "",
+                "rising_sum": rising_sum, "total_sum": rising_sum,
+                "us_score": us_score, "news_count": news_count,
+                "stocks": stocks,
+                "has_limit_up": any(s["is_limit_up"] for s in stocks),
+                "has_52w_high": False,
+                "is_top_amount": (rank_num == 1),
+                "v2_rank_reason": v2_rank_reason,
+            })
+
+        return (themes, separated), None
+    except Exception as e:
+        return None, str(e)
+
+
 @st.cache_data(ttl=CACHE_TTL)
 def build_theme_ranking_v2():
     """V2 랭킹 빌드"""
@@ -333,7 +451,14 @@ if not is_mobile:
             updateClockV2(); setInterval(updateClockV2, 1000);
             </script>""", height=0)
     with h2:
-        pass  # 날짜 선택 불필요 (실시간 전용)
+        selected_date = st.date_input(
+            "날짜 선택",
+            value=date.today(),
+            min_value=date(2026, 1, 1),
+            max_value=date.today(),
+            label_visibility="collapsed",
+            key="v2_date"
+        )
     with h3:
         if st.button("📱 모바일", use_container_width=True, key="v2_mob_btn"):
             st.session_state.v2_view_mode = "모바일"
@@ -365,6 +490,15 @@ else:
         updateClockV2(); setInterval(updateClockV2, 1000);
         </script>""", height=0)
     m1, m2, m3 = st.columns([3, 1, 1])
+    with m1:
+        selected_date = st.date_input(
+            "날짜",
+            value=date.today(),
+            min_value=date(2026, 1, 1),
+            max_value=date.today(),
+            label_visibility="collapsed",
+            key="v2_date"
+        )
     with m2:
         if st.button("🖥️ PC", use_container_width=True, key="v2_pc_btn"):
             st.session_state.v2_view_mode = "PC"
@@ -386,15 +520,29 @@ else:
         .candle-bar-track { height: 3px !important; margin-top: 3px !important; }
         </style>""", unsafe_allow_html=True)
 
-# ===================== 자동 새로고침 =====================
-if is_market_open_now(now):
+# ===================== 날짜 확인 =====================
+selected_date = st.session_state.get("v2_date", date.today())
+is_today = (selected_date == date.today())
+selected_date_str = selected_date.strftime("%Y-%m-%d")
+
+# ===================== 자동 새로고침 (오늘 + 장중만) =====================
+if is_market_open_now(now) and is_today:
     st.markdown(f"<meta http-equiv='refresh' content='{CACHE_TTL}'>", unsafe_allow_html=True)
 
 # ===================== 데이터 로드 =====================
-with st.spinner("V2 테마 랭킹 계산 중..."):
-    result = build_theme_ranking_v2()
+crown_stock_name = None
 
-top10, separated, crown_stock_name = result
+if is_today:
+    with st.spinner("V2 테마 랭킹 계산 중..."):
+        result = build_theme_ranking_v2()
+    top10, separated, crown_stock_name = result
+else:
+    with st.spinner(f"{selected_date_str} V2 데이터 불러오는 중..."):
+        hist_result, err = load_history_v2(selected_date_str)
+    if err:
+        st.warning(f"{selected_date_str} 저장된 V2 데이터가 없습니다: {err}")
+        st.stop()
+    top10, separated = hist_result
 
 # RS Rating 주입
 if RS_AVAILABLE and top10:
@@ -583,4 +731,7 @@ if separated:
             )
             render_stock_item(s, now, crown_stock_name)
 
-st.caption(f"V2 랭킹: 상승거래대금 기반 · {CACHE_TTL//60}분마다 자동갱신 · 🇺🇸미국연관 강제1위 · 📰뉴스노출 강제2위")
+if is_today:
+    st.caption(f"V2 랭킹: 상승거래대금 기반 · {CACHE_TTL//60}분마다 자동갱신 · 🇺🇸미국연관 강제1위 · 📰뉴스노출 강제2위")
+else:
+    st.caption(f"📅 {selected_date_str} 저장 데이터 · V2 랭킹: 🇺🇸미국연관 강제1위 · 📰뉴스노출 강제2위")
