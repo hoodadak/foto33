@@ -195,6 +195,8 @@ def get_market_top10_stocks_c():
                 if not name_tag:
                     continue
                 name = name_tag.text.strip()
+                if any(name.upper().startswith(p.upper()) or p in name for p in ETF_ETN_PREFIXES):
+                    continue
                 try:
                     amount_eok = float(tds[5].text.strip().replace(",", "")) / 100.0
                 except ValueError:
