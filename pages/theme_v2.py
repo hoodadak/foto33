@@ -175,6 +175,37 @@ def get_news_counts_c(theme_names_tuple):
         return {name: 0 for name in theme_names}
 
 @st.cache_data(ttl=CACHE_TTL)
+def get_market_top10_stocks_c():
+    """전체 시장(코스피+코스닥) 거래대금 상위 10 종목명 반환"""
+    all_stocks = []
+    for market_n in [0, 1]:
+        url = f"https://finance.naver.com/sise/sise_quant.naver?sosok={market_n}"
+        try:
+            res = requests.get(url, headers=HEADERS, timeout=7)
+            res.encoding = "euc-kr"
+            soup = BeautifulSoup(res.text, "html.parser")
+            table = soup.select_one("table.type_2")
+            if not table:
+                continue
+            for tr in table.select("tr"):
+                tds = tr.select("td")
+                if len(tds) < 6:
+                    continue
+                name_tag = tds[1].select_one("a")
+                if not name_tag:
+                    continue
+                name = name_tag.text.strip()
+                try:
+                    amount_eok = float(tds[5].text.strip().replace(",", "")) / 100.0
+                except ValueError:
+                    amount_eok = 0.0
+                all_stocks.append({"name": name, "amount_eok": amount_eok})
+        except Exception:
+            continue
+    all_stocks.sort(key=lambda x: x["amount_eok"], reverse=True)
+    return [s["name"] for s in all_stocks[:10]]
+
+@st.cache_data(ttl=CACHE_TTL)
 def get_news_counts_by_stock_c(stock_names_tuple):
     """뉴스 노출 갯수 - 종목명 단위"""
     stock_names = list(stock_names_tuple)
@@ -402,19 +433,12 @@ def build_theme_ranking_v2():
             theme_results = [theme_results[0], news_top] + rest
         theme_results[1]["v2_rank_reason"] = "news"
 
-    # 👑 왕관: 전체 종목 거래대금 상위 10 중 뉴스 노출 1위 종목
+    # 👑 왕관: 전체 시장 거래대금 상위 10 종목 중 뉴스 노출 1위 종목
     crown_stock_name = None
-    all_stocks_flat = [
-        s for t in theme_results for s in t.get("stocks", [])
-    ]
-    all_stocks_flat.sort(key=lambda s: s["amount_eok"], reverse=True)
-    top10_stocks = all_stocks_flat[:10]
-    if top10_stocks:
-        top10_names = tuple(s["name"] for s in top10_stocks)
-        stock_news = get_news_counts_by_stock_c(top10_names)
-        # 뉴스 1위 종목
-        news_top_stock = max(top10_names, key=lambda n: stock_news.get(n, 0))
-        # 뉴스 언급이 1건 이상일 때만 왕관 부여
+    market_top10_names = get_market_top10_stocks_c()
+    if market_top10_names:
+        stock_news = get_news_counts_by_stock_c(tuple(market_top10_names))
+        news_top_stock = max(market_top10_names, key=lambda n: stock_news.get(n, 0))
         if stock_news.get(news_top_stock, 0) > 0:
             crown_stock_name = news_top_stock
 
