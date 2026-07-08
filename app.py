@@ -293,7 +293,7 @@ else:
     if "mob_date" in st.session_state:
         selected_date = st.session_state["mob_date"]
 
-is_today = (selected_date == date.today())
+is_today = (selected_date == datetime.now(KST).date())
 selected_date_str = selected_date.strftime("%Y-%m-%d")
 
 # ===================== 데이터 로드 (오늘=실시간, 과거=Google Sheets) =====================
