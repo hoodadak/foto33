@@ -185,7 +185,7 @@ if st.button("🔄 새로고침", use_container_width=True):
     st.rerun()
 
 # ===================== 데이터 로드 =====================
-is_today = (selected_date == date.today())
+is_today = (selected_date == datetime.now(KST).date())
 selected_date_str = selected_date.strftime("%Y-%m-%d")
 
 if is_today:
