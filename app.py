@@ -275,6 +275,8 @@ else:
         if st.button("🔄", use_container_width=True, key="mob_refresh"):
             st.cache_data.clear()
             st.rerun()
+    with mob_col4:
+        st.page_link("pages/theme_v2.py", label="V2", use_container_width=True)
 
     # 모바일 전용 CSS: 컬럼 가로배치 강제 + 카드/폰트 축소
     st.markdown("""
