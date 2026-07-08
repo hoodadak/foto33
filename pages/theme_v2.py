@@ -569,7 +569,7 @@ else:
 
 # ===================== 날짜 확인 =====================
 selected_date = st.session_state.get("v2_date", date.today())
-is_today = (selected_date == date.today())
+is_today = (selected_date == datetime.now(KST).date())
 selected_date_str = selected_date.strftime("%Y-%m-%d")
 
 # ===================== 자동 새로고침 (오늘 + 장중만) =====================
