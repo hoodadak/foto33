@@ -257,7 +257,7 @@ else:
         </script>
     """, height=0)
 
-    mob_col1, mob_col2, mob_col3, mob_col4 = st.columns([2.5, 1, 1, 1])
+    mob_col1, mob_col2, mob_col3 = st.columns([3, 1, 1])
     with mob_col1:
         selected_date = st.date_input(
             "날짜",
@@ -275,8 +275,7 @@ else:
         if st.button("🔄", use_container_width=True, key="mob_refresh"):
             st.cache_data.clear()
             st.rerun()
-    with mob_col4:
-        st.page_link("pages/theme_v2.py", label="V2", use_container_width=True)
+    st.page_link("pages/theme_v2.py", label="📊 주도테마 V2로 이동", use_container_width=True)
 
     # 모바일 전용 CSS: 컬럼 가로배치 강제 + 카드/폰트 축소
     st.markdown("""
