@@ -255,7 +255,7 @@ else:
         </script>
     """, height=0)
 
-    mob_col1, mob_col2, mob_col3 = st.columns([3, 1, 1])
+    mob_col1, mob_col2, mob_col3, mob_col4 = st.columns([2.5, 1, 1, 1])
     with mob_col1:
         selected_date = st.date_input(
             "날짜",
