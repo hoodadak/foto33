@@ -186,7 +186,7 @@ is_mobile = (st.session_state.view_mode == "모바일")
 
 if not is_mobile:
     # ── PC 모드: 로고+시계+날짜+버튼 한 줄 ──
-    header_col1, header_col2, header_col3, header_col4 = st.columns([5, 1, 0.5, 0.5])
+    header_col1, header_col2, header_col3, header_col4, header_col5 = st.columns([4.5, 1, 0.5, 0.5, 0.5])
     with header_col1:
         st.markdown("""
             <div class="tima-header-box">
@@ -228,6 +228,8 @@ if not is_mobile:
         if st.button("🔄 새로고침", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
+    with header_col5:
+        st.page_link("pages/theme_v2.py", label="V2", use_container_width=True)
 else:
     # ── 모바일 모드: 로고+시계 1행 / 날짜+버튼 2행 ──
     st.markdown("""
