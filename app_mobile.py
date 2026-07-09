@@ -175,9 +175,9 @@ if is_market_open_now(now):
 st.markdown('<div style="font-size:22px;font-weight:800;color:#1e293b;padding:4px 2px 2px 2px;">주도테마</div>', unsafe_allow_html=True)
 
 selected_date = st.date_input("날짜",
-    value=date.today(),
+    value=datetime.now(KST).date(),
     min_value=date(2026, 1, 1),
-    max_value=date.today(),
+    max_value=datetime.now(KST).date(),
     label_visibility="collapsed")
 
 if st.button("🔄 새로고침", use_container_width=True):

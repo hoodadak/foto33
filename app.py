@@ -215,9 +215,9 @@ if not is_mobile:
     with header_col2:
         selected_date = st.date_input(
             "날짜 선택",
-            value=date.today(),
+            value=datetime.now(KST).date(),
             min_value=date(2026, 1, 1),
-            max_value=date.today(),
+            max_value=datetime.now(KST).date(),
             label_visibility="collapsed"
         )
     with header_col3:
@@ -261,9 +261,9 @@ else:
     with mob_col1:
         selected_date = st.date_input(
             "날짜",
-            value=date.today(),
+            value=datetime.now(KST).date(),
             min_value=date(2026, 1, 1),
-            max_value=date.today(),
+            max_value=datetime.now(KST).date(),
             label_visibility="collapsed",
             key="mob_date"
         )
