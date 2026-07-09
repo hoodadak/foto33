@@ -500,9 +500,9 @@ if not is_mobile:
     with h2:
         selected_date = st.date_input(
             "날짜 선택",
-            value=date.today(),
+            value=datetime.now(KST).date(),
             min_value=date(2026, 1, 1),
-            max_value=date.today(),
+            max_value=datetime.now(KST).date(),
             label_visibility="collapsed",
             key="v2_date"
         )
@@ -540,9 +540,9 @@ else:
     with m1:
         selected_date = st.date_input(
             "날짜",
-            value=date.today(),
+            value=datetime.now(KST).date(),
             min_value=date(2026, 1, 1),
-            max_value=date.today(),
+            max_value=datetime.now(KST).date(),
             label_visibility="collapsed",
             key="v2_date"
         )
@@ -568,7 +568,7 @@ else:
         </style>""", unsafe_allow_html=True)
 
 # ===================== 날짜 확인 =====================
-selected_date = st.session_state.get("v2_date", date.today())
+selected_date = st.session_state.get("v2_date", datetime.now(KST).date())
 is_today = (selected_date == datetime.now(KST).date())
 selected_date_str = selected_date.strftime("%Y-%m-%d")
 
